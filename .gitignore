@@ -11,5 +11,8 @@ tools/wam-probes/_scratch/
 # Probes default WAM_SCRATCH to _scratch/ relative to the working directory, so a run
 # started from the repo root lands here. Its raw XML carries the speaker's TuneIn serial.
 _scratch/
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/rules/
 .claude.local.md

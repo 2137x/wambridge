@@ -107,13 +107,15 @@ state that can feed:
 
 ## 8. Phone-side HLS / Ogg support
 
-**Software implemented 2026-09-23; physical M5 validation pending.** Media3 decodes HLS and
-Ogg/Opus on the phone, normalizes audio to PCM16 stereo 44.1 kHz and serves endless WAV to the
-M5. The normal MP3/AAC/FLAC relay remains lightweight. The transcoder stays bound to the selected
-Wi-Fi network and forwards Media3 title/artist/web-artwork metadata into shared Now Playing state.
+**Software implemented in PR #187; final-head Mobile and Build CI are green, physical M5
+validation still required before merge.** The isolated Media3 path decodes HLS/Ogg/Opus,
+normalizes to PCM16 stereo 44.1 kHz and serves endless WAV to the speaker while MP3/AAC/FLAC
+stay on the lightweight direct relay. The transcoder stays bound to the selected Wi-Fi network
+and feeds Media3 title/artist/web artwork into the shared Now Playing state. BBC 6 Music and
+Fallout FM 5 are exposed to Android because their HLS/Ogg formats now have a software path.
 
-BBC 6 Music and Fallout FM 5 are now exposed to Android because their HLS/Ogg formats have a
-software path. Merge/release of this transport work remains gated on the physical M5 pass.
+The remaining gate is hardware: confirm HLS and Ogg playback, metadata/artwork, stream takeover,
+reconnect and unchanged direct-format playback on the physical M5.
 
 ## 9. Quick actions everywhere
 
@@ -147,18 +149,14 @@ Keep protocol archaeology out of the normal UI while still making failures expla
 
 ## Suggested order
 
-Build the daily-driver layer first:
+Most of the daily-driver layer is shipped. The remaining sequence is deliberately hardware-led:
 
-1. Home / Now Playing
-2. MediaSession
-3. Sleep Timer / Standby
-4. Radio favourites 2.0
-5. ICY metadata
-6. Quick actions
+1. validate PR #187 on the physical M5, including HLS/Ogg playback and metadata/artwork;
+2. finish the 15/30/45/60-minute sleep-timer duration/readback pass;
+3. validate preset write commands before exposing physical preset editing on Android.
 
-Then continue with speaker-specific preset management, smarter fallback routing and the
-larger HLS/Ogg transport work. Diagnostics should grow alongside those changes rather than
-becoming a separate second control stack.
+Diagnostics should grow alongside those checks rather than becoming a separate second control
+stack.
 
 The goal is to keep WAM Bridge small, local and useful: no account system, cloud backend or
 framework migration unless a concrete feature eventually requires one.
