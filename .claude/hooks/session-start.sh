@@ -21,6 +21,18 @@ if [ -x "$sdkm" ] && [ ! -d "$ANDROID_HOME/build-tools/36.0.0" ]; then
   "$sdkm" "build-tools;36.0.0" >/dev/null || echo "sdkmanager: build-tools 36 failed" >&2
 fi
 
+# Android skills from the Android CLI, user-level so the repo stays clean.
+# Detached: ~3 s per skill must not delay the session; Claude Code picks new
+# skills up live because the setup script pre-creates ~/.claude/skills.
+if command -v android >/dev/null 2>&1; then
+  (
+    for skill in android-cli testing-setup edge-to-edge r8-analyzer android-intent-security android-permissions-security; do
+      [ -d "$HOME/.claude/skills/$skill" ] && continue
+      android skills add --agent=claude-code "$skill" || echo "android skill failed: $skill"
+    done
+  ) >/tmp/android-skills.log 2>&1 &
+fi
+
 # foobar2000 SDK headers, outside the repo so they never get committed.
 sdk="$HOME/.cache/foobar-sdk"
 if [ ! -d "$sdk" ] && command -v 7z >/dev/null; then
