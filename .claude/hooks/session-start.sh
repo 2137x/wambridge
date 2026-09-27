@@ -9,7 +9,6 @@ persist() { [ -n "${CLAUDE_ENV_FILE:-}" ] && echo "$1" >> "$CLAUDE_ENV_FILE"; }
 
 # Python package, ruff and pyinstaller (Python 3.14 via uv).
 { uv sync --locked -q && echo "uv sync: ok"; } || echo "uv sync failed" >&2 &
-UV=$!
 
 # Android adapter (mobile/): compileSdk 37, build-tools 36.
 if [ -z "${ANDROID_HOME:-}" ] && [ -d /opt/android-sdk ]; then
@@ -22,15 +21,15 @@ if [ -x "$sdkm" ] && [ ! -d "$ANDROID_HOME/build-tools/36.0.0" ]; then
 fi
 
 # Android skills from the Android CLI, user-level so the repo stays clean.
-# Detached: ~3 s per skill must not delay the session; Claude Code picks new
-# skills up live because the setup script pre-creates ~/.claude/skills.
+# Installed in parallel (~11 s on a fresh VM, 0 s once present) and waited
+# for, so the first turn already has them.
 if command -v android >/dev/null 2>&1; then
-  (
-    for skill in android-cli testing-setup edge-to-edge r8-analyzer android-intent-security android-permissions-security; do
-      [ -d "$HOME/.claude/skills/$skill" ] && continue
-      android skills add --agent=claude-code "$skill" || echo "android skill failed: $skill"
-    done
-  ) >/tmp/android-skills.log 2>&1 &
+  for skill in android-cli testing-setup edge-to-edge r8-analyzer android-intent-security android-permissions-security; do
+    [ -d "$HOME/.claude/skills/$skill" ] && continue
+    android skills add --agent=claude-code "$skill" >/dev/null 2>&1 \
+      || echo "android skill failed: $skill" >&2 &
+  done
+  wait
 fi
 
 # foobar2000 SDK headers, outside the repo so they never get committed.
@@ -49,5 +48,5 @@ if [ -n "$proj" ]; then
   persist "export FOOBAR_SDK_ROOT=$(dirname "$(dirname "$(dirname "$proj")")")"
 fi
 
-wait "$UV"
+wait
 exit 0
