@@ -4,4 +4,6 @@ local.properties
 **/build/
 *.jks
 *.keystore
+# Shared debug signing key, deliberately public: see app/build.gradle.kts.
+!app/debug.keystore
 keystore.properties
