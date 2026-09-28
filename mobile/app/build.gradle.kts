@@ -44,6 +44,18 @@ android {
     }
 
     signingConfigs {
+        // Every CI runner used to mint its own throwaway debug key, so each
+        // debug APK had a different signature and Android refused it over the
+        // previous one ("conflicts with an existing package") until the old copy
+        // was removed - including hidden copies in other MIUI profiles, which
+        // needs adb. One committed key makes every debug build install over the
+        // last. It signs debug builds only and protects nothing.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (releaseSigningReady) {
             create("release") {
                 storeFile = file(requireNotNull(releaseKeystorePath))
@@ -64,7 +76,10 @@ android {
         // leftover copy under another MIUI user profile is invisible enough to
         // look like a broken APK. Giving debug its own applicationId ends it.
         debug {
-            applicationIdSuffix = ".debug"
+            // ".dev" rather than the old ".debug": copies of ".debug" signed
+            // with per-runner keys may linger on test phones, and a fresh
+            // package ID sidesteps them without adb.
+            applicationIdSuffix = ".dev"
             versionNameSuffix = "-debug"
             // The launcher label is overridden in src/debug/res rather than with
             // resValue, which would collide with the app_name already in
