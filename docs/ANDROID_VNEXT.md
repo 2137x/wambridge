@@ -107,14 +107,27 @@ state that can feed:
 
 ## 8. Phone-side HLS / Ogg support
 
-**Software implemented in PR #187; final-head Mobile and Build CI are green, physical M5
-validation still required before merge.** The isolated Media3 path decodes HLS/Ogg/Opus,
-normalizes to PCM16 stereo 44.1 kHz and serves endless WAV to the speaker while MP3/AAC/FLAC
-stay on the lightweight direct relay. The transcoded path also feeds Media3 title/artist/web
-artwork into the shared Now Playing state.
+**Merged in PR #187; first physical M5 pass 2026-09-28.** The isolated Media3 path decodes
+HLS/Ogg/Opus, normalizes to PCM16 stereo 44.1 kHz and serves endless WAV to the speaker while
+MP3/AAC/FLAC stay on the lightweight direct relay. The transcoder stays bound to the selected
+Wi-Fi network and feeds Media3 title/artist/web artwork into the shared Now Playing state. BBC 6
+Music and Fallout FM 5 are exposed to Android because their HLS/Ogg formats now have a software
+path.
 
-The remaining gate is hardware: confirm HLS and Ogg playback, metadata/artwork, stream takeover,
-reconnect and unchanged direct-format playback on the physical M5.
+Passed on the M5: BBC Radio 1 (HLS) and Trójka (Ogg) play; Ogg `StreamTitle` reaches Now
+Playing; HLS -> Ogg switch without wedging; Stop during playback then restart; Czwórka (direct
+Shoutcast MP3) unchanged; Diagnostics stays on the selected Wi-Fi.
+
+Still to check on hardware:
+
+- [ ] Stop during transcoder startup (start BBC1, Stop from the notification within 1-2 s),
+  then start another station.
+- [ ] Each transcoded station stable for at least 60 s (only Trójka was listened to at length).
+- [ ] Volume on station start: confirm it lifts from 0 to the safe step 3 once the M5 pulls
+  audio and never stays at 0. Decide whether a station switch while already playing should
+  keep the current volume instead of re-running the safe start (existing `main` behaviour).
+- [ ] BBC HLS shows no track title (`Now playing: None`); confirm the stream carries no timed
+  metadata rather than it being dropped.
 
 ## 9. Quick actions everywhere
 

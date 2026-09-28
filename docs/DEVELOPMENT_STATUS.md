@@ -660,10 +660,13 @@ operating system records.
     widget and Quick Settings after clearing or staling the saved target, and repeat across a
     real Wi-Fi/DHCP move on the physical M5.
 
-    **HLS/Ogg transport candidate 2026-09-23:** PR #187 implements an isolated Media3
-    HLS/Ogg/Opus -> PCM16/WAV path while leaving MP3/AAC/FLAC on the lightweight relay. Final
-    Mobile and Build CI are green; merge remains gated on physical M5 playback plus
-    metadata/artwork, takeover and reconnect checks.
+    **HLS/Ogg transport merged 2026-09-28:** PR #187 implements an isolated Media3
+    HLS/Ogg/Opus -> PCM16/WAV path while leaving MP3/AAC/FLAC on the lightweight relay. The
+    first physical M5 pass played BBC Radio 1 (HLS), Trójka (Ogg, with `StreamTitle`) and
+    Czwórka (direct MP3), switched HLS -> Ogg and restarted after Stop. Merged with open
+    hardware items tracked in `docs/ANDROID_VNEXT.md` section 8: Stop during transcoder
+    startup, 60 s stability per transcoded station, the 0 -> 3 safe-start volume on every
+    station start, and missing BBC HLS titles.
 
     **Home/Radio navigation updated 2026-09-23:** Home consumes the shared speaker snapshot for
     Now Playing and direct controls, including the stateful DLNA toggle. Radio owns station
