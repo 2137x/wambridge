@@ -66,7 +66,7 @@ The Android adapter provides:
   controls can actually appear in the notification shade;
 - an M5-style app/renderer icon exposed through UPnP for players such as Neutron;
 
-Physical phone + M5 playback through Neutron is confirmed. HLS and Ogg/Opus radio can use the isolated phone-side Media3 transcoder, which normalizes decoded audio to PCM16 stereo 44.1 kHz and serves endless WAV to the M5. MP3/AAC/FLAC remain on the lightweight direct relay. Physical M5 validation of the transcoding path is still required before release.
+Physical phone + M5 playback through Neutron is confirmed. HLS and Ogg/Opus radio use the isolated phone-side Media3 transcoder, which normalizes decoded audio to PCM16 stereo 44.1 kHz and serves endless WAV to the M5. MP3/AAC/FLAC remain on the lightweight direct relay. The first physical M5 pass on 2026-09-28 confirmed BBC Radio 1 HLS, Trójka Ogg with `StreamTitle`, HLS -> Ogg switching, Stop -> restart and unchanged direct MP3 playback. The remaining hardware checks are tracked in `docs/ANDROID_VNEXT.md` section 8.
 
 ### Android navigation
 

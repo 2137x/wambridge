@@ -163,7 +163,8 @@ Keep protocol archaeology out of the normal UI while still making failures expla
 
 Most of the daily-driver layer is shipped. The remaining sequence is deliberately hardware-led:
 
-1. validate PR #187 on the physical M5, including HLS/Ogg playback and metadata/artwork;
+1. finish the remaining HLS/Ogg hardware checks from section 8: startup Stop, 60 s stability,
+   safe-start volume and BBC timed-metadata verification;
 2. finish the 15/30/45/60-minute sleep-timer duration/readback pass;
 3. validate preset write commands before exposing physical preset editing on Android.
 
