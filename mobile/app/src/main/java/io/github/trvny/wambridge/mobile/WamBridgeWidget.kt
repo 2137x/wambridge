@@ -104,9 +104,9 @@ class WamBridgeWidget : AppWidgetProvider() {
                 outcome.message?.let { showToast(appContext, it) }
                 when (outcome.destination) {
                     SpeakerControls.Destination.SETTINGS -> openSettings(appContext)
-                    SpeakerControls.Destination.TUNEIN ->
+                    SpeakerControls.Destination.RADIO ->
                         appContext.startActivity(
-                            Intent(appContext, TuneInActivity::class.java)
+                            MainNavigation.intent(appContext, MainDestination.RADIO)
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                         )
                     null -> Unit
@@ -297,7 +297,7 @@ class WamBridgeWidget : AppWidgetProvider() {
             PendingIntent.getActivity(
                 context,
                 appWidgetId * 10 + 6,
-                Intent(context, RadioStationsActivity::class.java),
+                MainNavigation.intent(context, MainDestination.RADIO),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
 

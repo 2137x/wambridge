@@ -72,14 +72,13 @@ Physical phone + M5 playback through Neutron is confirmed. HLS and Ogg/Opus radi
 
 The launcher now opens a persistent **Home · Radio · Settings** shell. Home is the default
 daily-driver screen: Now Playing, shared play/pause/mute/raw-volume controls, connection state
-and a stateful one-tap DLNA renderer switch. Radio is the station picker: it opens with the full
-TuneIn preset list read from the M5 plus Browse TuneIn, then shows the app-side stations with
-their TuneIn/direct/fallback source summary and a route to the full station manager. The three
-physical Radio-button slots remain part of that M5-owned TuneIn list instead of being repeated
-on Home and Settings. Settings keeps normal speaker/system
-controls up front, while Diagnostics exposes copyable runtime/network state and a controlled
-Fix connection action. Manual IP and dedicated troubleshooting controls live under Advanced. Switching
-root destinations reuses the same panes instead of recreating Activities.
+and a stateful one-tap DLNA renderer switch. Radio is the only playback destination: it starts
+with the three physical M5 Radio-button slots, then the remaining TuneIn presets, then saved
+TuneIn/direct/fallback stations. All playable entries use artwork cards. Notifications,
+MediaSession and widget radio links return to that same Radio tab; the station manager is only
+for editing/import/order. Settings keeps discovery and Android integration, while DLNA on/off
+lives on Home. Diagnostics exposes runtime/network state; manual IP lives under Advanced.
+Switching root destinations reuses the same panes instead of recreating Activities.
 
 ### Home and physical presets
 
@@ -90,9 +89,10 @@ stations with a validated TuneIn station ID derive their logo from TuneIn's stat
 when playback falls back to a direct URL. Missing or failed artwork, and URL-only stations,
 fall back to the app icon; artwork is never guessed from arbitrary stream URLs.
 
-Physical presets live only under **Radio**, inside the full M5-owned TuneIn preset list. The
-three `kind=speaker` entries cycled by the physical Radio button are not duplicated on Home or
-Settings and are not a second local favourites list.
+Physical presets live only under **Radio** as an explicit three-slot section. The three
+`kind=speaker` entries are labelled **Physical button 1/2/3**, matching the slots cycled by the
+speaker's hardware Radio button. The remaining M5 TuneIn presets are rendered separately below,
+without duplicating the physical slots on Home or Settings.
 
 The M5 preset list is read-only in this release. Android can play entries through the already
 measured `SetPlayPreset` path, but preset editing stays disabled until the write-side

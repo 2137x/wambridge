@@ -15,7 +15,7 @@ class SettingsSurfaceContractTest {
     private val manifest = File("src/main/AndroidManifest.xml").readText()
 
     @Test
-    fun advancedOwnsManualIpAndLowLevelRendererControls() {
+    fun advancedOwnsOnlyManualIpOverride() {
         assertTrue(manifest.contains(".AdvancedSettingsActivity"))
         val source = advanced.readText()
         assertTrue(source.contains("IPv4 address"))
@@ -23,8 +23,10 @@ class SettingsSurfaceContractTest {
         assertTrue(source.contains("RendererService.isReasonableIpv4"))
         assertTrue(source.contains("SpeakerTarget.rememberManualIp"))
         assertTrue(source.contains("SamsungWamChannel.probe"))
-        assertTrue(source.contains("RendererService.ACTION_START"))
-        assertTrue(source.contains("RendererService.ACTION_STOP"))
+        assertFalse(source.contains("RendererService.ACTION_START"))
+        assertFalse(source.contains("RendererService.ACTION_STOP"))
+        assertFalse(source.contains("\"Start renderer\""))
+        assertFalse(source.contains("Explicit service controls"))
     }
 
     @Test
@@ -45,6 +47,8 @@ class SettingsSurfaceContractTest {
         assertTrue(settings.contains("AdvancedSettingsActivity::class.java"))
         assertTrue(settings.contains("\"Add DLNA tile\""))
         assertTrue(settings.contains("\"Add Radio tile\""))
+        assertFalse(settings.contains("\"Start renderer\""))
+        assertFalse(settings.contains("\"Stop renderer\""))
         assertFalse(settings.contains("\"Physical presets\""))
         assertFalse(settings.contains("\"Saved stations\""))
     }

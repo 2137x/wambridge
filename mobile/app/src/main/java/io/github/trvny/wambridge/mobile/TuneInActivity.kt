@@ -2,16 +2,12 @@ package io.github.trvny.wambridge.mobile
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -144,57 +140,9 @@ class TuneInActivity : Activity() {
             "${presets.size} preset${if (presets.size == 1) "" else "s"} ready.",
             MobileUi.StatusKind.SUCCESS,
         )
-        presets.forEach { preset -> presetsView.addView(presetCard(preset)) }
-    }
-
-    private fun presetCard(preset: SamsungTuneIn.Preset): View {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(10), dp(10), dp(10))
-            background = roundedBackground()
-            setOnClickListener { playPreset(preset) }
+        presets.forEach { preset ->
+            presetsView.addView(tuneInPresetCard(this, preset) { playPreset(preset) })
         }
-        row.layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-        ).apply { bottomMargin = dp(8) }
-
-        val logo = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            setImageResource(R.mipmap.ic_launcher)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(10).toFloat()
-                setColor(Color.argb(14, 0, 0, 0))
-            }
-            clipToOutline = true
-        }
-        row.addView(logo, LinearLayout.LayoutParams(dp(58), dp(58)).apply { marginEnd = dp(12) })
-        ArtworkLoader.load(this, logo, preset.thumbnail)
-
-        val copy = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        copy.addView(TextView(this).apply {
-            text = preset.title
-            textSize = 17f
-            typeface = Typeface.DEFAULT_BOLD
-            maxLines = 2
-        })
-        val detail = listOfNotNull(
-            preset.description?.takeIf { it.isNotBlank() },
-            preset.mediaId?.takeIf { it.isNotBlank() },
-        ).joinToString(" · ")
-        if (detail.isNotBlank()) {
-            copy.addView(TextView(this).apply {
-                text = detail
-                textSize = 12f
-                setTextColor(getColor(R.color.wam_muted))
-                maxLines = 2
-            })
-        }
-        row.addView(copy, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(MobileUi.button(this, "Play", MobileUi.ButtonKind.PRIMARY) { playPreset(preset) })
-        return row
     }
 
     private fun playPreset(preset: SamsungTuneIn.Preset) {
@@ -355,15 +303,6 @@ class TuneInActivity : Activity() {
             }
         }, "wam-mobile-tunein-stop").start()
     }
-
-    private fun roundedBackground(): GradientDrawable = MobileUi.rounded(
-        this,
-        fill = getColor(R.color.wam_surface),
-        stroke = getColor(R.color.wam_border),
-        radiusDp = 18,
-    )
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun endSpeakerPlayback(target: String): String {
         val clientUuid = preferences.getString(KEY_CLIENT_UUID, null)

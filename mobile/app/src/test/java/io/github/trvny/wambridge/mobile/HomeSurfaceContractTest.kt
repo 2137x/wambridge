@@ -71,22 +71,26 @@ class HomeSurfaceContractTest {
     }
 
     @Test
-    fun radioStartsWithTuneInThenShowsOtherStations() {
+    fun radioIsTheSinglePlaybackSurfaceWithPhysicalSlotsAndArtwork() {
         val radioStart = main.indexOf("private fun buildRadioPane")
         val settingsStart = main.indexOf("private fun buildSettingsPane")
         assertTrue(radioStart >= 0)
         assertTrue(settingsStart > radioStart)
 
         val radio = main.substring(radioStart, settingsStart)
-        assertTrue(radio.indexOf("\"TuneIn\"") < radio.indexOf("\"Other stations\""))
+        assertTrue(radio.indexOf("\"Physical Radio buttons\"") < radio.indexOf("\"TuneIn presets\""))
+        assertTrue(radio.indexOf("\"TuneIn presets\"") < radio.indexOf("\"Saved stations\""))
+        assertTrue(radio.contains("radioPhysicalView"))
         assertTrue(radio.contains("radioTuneInView"))
-        assertTrue(radio.contains("Browse TuneIn"))
-        assertTrue(radio.contains("Refresh presets"))
         assertTrue(radio.contains("radioStationsView"))
-        assertTrue(radio.contains("Manage stations"))
+        assertTrue(radio.contains("Browse TuneIn"))
+        assertTrue(radio.contains("Station manager"))
         assertTrue(radio.contains("CatalogueActivity::class.java"))
         assertTrue(radio.contains("RadioStationsActivity::class.java"))
+        assertTrue(main.contains("snapshot.slots"))
         assertTrue(main.contains("snapshot.allPresets"))
+        assertTrue(main.contains("tuneInPresetCard"))
+        assertTrue(main.contains("savedRadioStationCard"))
         assertTrue(main.contains("playTuneInPreset"))
         assertTrue(main.contains("playSavedStation"))
     }
@@ -96,8 +100,10 @@ class HomeSurfaceContractTest {
         val settingsStart = main.indexOf("private fun buildSettingsPane")
         val settings = main.substring(settingsStart)
 
-        assertFalse(settings.contains("Physical presets"))
+        assertFalse(settings.contains("Physical Radio buttons"))
         assertFalse(settings.contains("Saved stations"))
+        assertFalse(settings.contains("\"Start renderer\""))
+        assertFalse(settings.contains("\"Stop renderer\""))
     }
 
     @Test
