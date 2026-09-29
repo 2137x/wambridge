@@ -20,7 +20,7 @@ internal class RadioMediaSession(
             PendingIntent.getActivity(
                 appContext,
                 71,
-                Intent(appContext, RadioStationsActivity::class.java),
+                MainNavigation.intent(appContext, MainDestination.RADIO),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             ),
         )

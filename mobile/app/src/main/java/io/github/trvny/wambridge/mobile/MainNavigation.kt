@@ -36,5 +36,6 @@ internal object MainNavigation {
     fun intent(context: Context, destination: MainDestination): Intent =
         Intent(context, MainActivity::class.java).apply {
             putExtra(EXTRA_DESTINATION, destination.name)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
 }

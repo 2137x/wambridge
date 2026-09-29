@@ -809,7 +809,7 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
         val openIntent = PendingIntent.getActivity(
             this,
             31,
-            Intent(this, RadioStationsActivity::class.java),
+            MainNavigation.intent(this, MainDestination.RADIO),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         fun action(requestCode: Int, action: String): PendingIntent = PendingIntent.getService(

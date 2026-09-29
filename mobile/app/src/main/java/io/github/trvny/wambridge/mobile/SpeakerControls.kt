@@ -11,7 +11,7 @@ import android.content.Intent
  */
 internal object SpeakerControls {
     enum class Action { PLAY_PAUSE, MUTE, VOLUME_DOWN, VOLUME_UP }
-    enum class Destination { SETTINGS, TUNEIN }
+    enum class Destination { SETTINGS, RADIO }
 
     data class Outcome(
         val message: String? = null,
@@ -75,7 +75,7 @@ internal object SpeakerControls {
                 }
 
                 SpeakerRemote.PlaybackToggleResult.NO_NATIVE_PLAYBACK ->
-                    Outcome(destination = Destination.TUNEIN)
+                    Outcome(destination = Destination.RADIO)
             }
 
             Action.MUTE -> {

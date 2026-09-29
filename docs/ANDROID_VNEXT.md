@@ -7,12 +7,12 @@ first in-app speaker controls and fresh-install fixes.
 
 **Foundation shipped 2026-09-22; TuneIn artwork + ICY metadata shipped 2026-09-23.** Home is
 the daily-driver surface with shared Now Playing state, direct controls and a stateful DLNA
-renderer toggle. Radio now owns station selection: the full M5 TuneIn preset list plus Browse
-TuneIn first, followed by saved TuneIn/direct/fallback stations. Physical presets are no longer
-duplicated across Home and Settings. Native TuneIn thumbnails reuse the same bounded artwork cache
-as the preset browser, and saved radio entries with a validated TuneIn station ID derive their
-logo from TuneIn's station CDN. URL-only streams still fall back to the app icon instead of
-guessing artwork from arbitrary stream URLs.
+renderer toggle. Radio owns playback navigation: the three physical M5 Radio-button slots are
+shown explicitly first, followed by the remaining TuneIn presets and saved TuneIn/direct/fallback
+stations. Notifications, MediaSession and widgets deep-link back to that same Radio tab instead
+of separate playback activities. Native TuneIn thumbnails and saved TuneIn IDs use the shared
+artwork-card renderer and bounded artwork cache. Settings no longer duplicates DLNA start/stop;
+Home is the single in-app DLNA control surface.
 
 Turn the main screen into a daily-driver view instead of a service panel.
 

@@ -19,7 +19,6 @@ class RadioStationsActivity : Activity() {
     private lateinit var urlsInput: EditText
     private lateinit var tuneInInput: EditText
     private lateinit var statusView: TextView
-    private lateinit var volumeView: TextView
     private lateinit var stationsView: LinearLayout
     private lateinit var pinnedView: LinearLayout
     private lateinit var recentView: TextView
@@ -30,8 +29,6 @@ class RadioStationsActivity : Activity() {
     private var editingAlias: String? = null
     private var pendingExport: ExportFormat? = null
 
-    private var volumeStep: Int? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         MobileUi.applyWindow(this)
@@ -40,8 +37,8 @@ class RadioStationsActivity : Activity() {
         content.addView(
             MobileUi.header(
                 this,
-                "Radio stations",
-                "Favourites, recents and station_packs.json defaults with TuneIn and ordered fallbacks.",
+                "Station manager",
+                "Edit, pin, order and import/export saved stations. Playback lives in the Radio tab.",
             ),
         )
 
@@ -52,22 +49,6 @@ class RadioStationsActivity : Activity() {
         val libraryCard = MobileUi.card(this)
         librarySummaryView = MobileUi.body(this, "")
         libraryCard.addView(librarySummaryView)
-        libraryCard.addView(MobileUi.row(this).apply {
-            setPadding(0, MobileUi.dp(this@RadioStationsActivity, 10), 0, 0)
-            MobileUi.addWeighted(
-                this,
-                MobileUi.button(this@RadioStationsActivity, "Play default", MobileUi.ButtonKind.PRIMARY) {
-                    playPreferred(default = true)
-                },
-            )
-            MobileUi.addWeighted(
-                this,
-                MobileUi.button(this@RadioStationsActivity, "Play last") {
-                    playPreferred(default = false)
-                },
-                marginDp = 0,
-            )
-        })
         recentView = MobileUi.body(this, "")
         recentView.setPadding(0, MobileUi.dp(this, 10), 0, 0)
         libraryCard.addView(recentView)
@@ -95,46 +76,6 @@ class RadioStationsActivity : Activity() {
             )
         })
         content.addView(libraryCard)
-
-        content.addView(MobileUi.sectionTitle(this, "Playback"))
-        val playbackCard = MobileUi.card(this)
-        playbackCard.addView(
-            MobileUi.body(
-                this,
-                "Direct MP3/AAC/FLAC-style streams are relayed by the phone. HLS and Ogg still need transcoding.",
-            ),
-        )
-        playbackCard.addView(MobileUi.row(this).apply {
-            setPadding(0, MobileUi.dp(this@RadioStationsActivity, 12), 0, 0)
-            MobileUi.addWeighted(
-                this,
-                MobileUi.button(
-                    this@RadioStationsActivity,
-                    "Stop radio",
-                    MobileUi.ButtonKind.DANGER,
-                ) { stopRadio() },
-                1.3f,
-            )
-            MobileUi.addWeighted(
-                this,
-                MobileUi.button(this@RadioStationsActivity, "−") { stepVolume(-1) },
-                0.65f,
-            )
-            volumeView = TextView(this@RadioStationsActivity).apply {
-                text = "Volume …"
-                textSize = 14f
-                gravity = android.view.Gravity.CENTER
-                setTextColor(getColor(R.color.wam_text))
-            }
-            MobileUi.addWeighted(this, volumeView, 1.2f)
-            MobileUi.addWeighted(
-                this,
-                MobileUi.button(this@RadioStationsActivity, "+") { stepVolume(+1) },
-                0.65f,
-                marginDp = 0,
-            )
-        })
-        content.addView(playbackCard)
 
         content.addView(MobileUi.sectionTitle(this, "Add or edit"))
         editorCard = MobileUi.card(this)
@@ -190,15 +131,17 @@ class RadioStationsActivity : Activity() {
         setContentView(scrollView)
         refreshStations()
         refreshLibrary()
-        refreshStatus()
+        MobileUi.setStatus(
+            statusView,
+            "Changes here affect the station library shown in Radio.",
+            MobileUi.StatusKind.INFO,
+        )
     }
 
     override fun onResume() {
         super.onResume()
-        if (::statusView.isInitialized) refreshStatus()
         if (::stationsView.isInitialized) refreshStations()
         if (::pinnedView.isInitialized) refreshLibrary()
-        if (::volumeView.isInitialized) refreshVolume()
     }
 
     @Deprecated("Storage Access Framework callback for the platform Activity base class.")
@@ -324,28 +267,16 @@ class RadioStationsActivity : Activity() {
 
         pinnedView.removeAllViews()
         val pinned = store.pinned()
-        if (pinned.isEmpty()) {
-            pinnedView.addView(MobileUi.body(this, "Pinned: none"))
-        } else {
-            pinnedView.addView(MobileUi.label(this, "Pinned"))
-            pinned.chunked(2).forEach { rowStations ->
-                pinnedView.addView(
-                    MobileUi.row(this).apply {
-                        rowStations.forEachIndexed { index, station ->
-                            MobileUi.addWeighted(
-                                this,
-                                MobileUi.button(
-                                    this@RadioStationsActivity,
-                                    station.alias,
-                                    MobileUi.ButtonKind.SECONDARY,
-                                ) { playStation(station) },
-                                marginDp = if (index == rowStations.lastIndex) 0 else 8,
-                            )
-                        }
-                    },
-                )
-            }
-        }
+        pinnedView.addView(
+            MobileUi.body(
+                this,
+                if (pinned.isEmpty()) {
+                    "Pinned: none"
+                } else {
+                    "Pinned: " + pinned.joinToString(" · ") { it.alias }
+                },
+            ),
+        )
     }
 
     private fun refreshStations() {
@@ -379,14 +310,6 @@ class RadioStationsActivity : Activity() {
                 )
             })
             card.addView(MobileUi.row(this).apply {
-                MobileUi.addWeighted(
-                    this,
-                    MobileUi.button(
-                        this@RadioStationsActivity,
-                        "Play",
-                        MobileUi.ButtonKind.PRIMARY,
-                    ) { playStation(station) },
-                )
                 MobileUi.addWeighted(
                     this,
                     MobileUi.button(
@@ -465,40 +388,6 @@ class RadioStationsActivity : Activity() {
         aliasInput.text.clear()
         urlsInput.text.clear()
         tuneInInput.text.clear()
-    }
-
-    private fun playPreferred(default: Boolean) {
-        val station = if (default) store.defaultStation() else store.lastPlayed()
-        if (station == null) {
-            MobileUi.setStatus(
-                statusView,
-                if (default) "No default station selected." else "Nothing has played yet.",
-                MobileUi.StatusKind.INFO,
-            )
-            return
-        }
-        playStation(station)
-    }
-
-    private fun playStation(station: MobileRadioStation) {
-        startForegroundService(
-            Intent(this, RadioService::class.java).apply {
-                action = RadioService.ACTION_PLAY
-                putExtra(RadioService.EXTRA_ALIAS, station.alias)
-            },
-        )
-        MobileUi.setStatus(statusView, "Starting ${station.alias}…")
-        window.decorView.postDelayed({ refreshStatus() }, 900)
-    }
-
-    private fun stopRadio() {
-        startService(
-            Intent(this, RadioService::class.java).apply {
-                action = RadioService.ACTION_STOP
-            },
-        )
-        MobileUi.setStatus(statusView, "Stopping radio…")
-        window.decorView.postDelayed({ refreshStatus() }, 300)
     }
 
     private fun importStations() {
@@ -580,109 +469,6 @@ class RadioStationsActivity : Activity() {
             if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
         }
 
-    private fun clientUuid(): String {
-        val preferences = getSharedPreferences(RendererService.PREFS, MODE_PRIVATE)
-        return preferences.getString(KEY_CLIENT_UUID, null)
-            ?: SamsungWamChannel.newClientUuid().also {
-                preferences.edit().putString(KEY_CLIENT_UUID, it).apply()
-            }
-    }
-
-    private fun speakerAddress(): String? {
-        val target = getSharedPreferences(RendererService.PREFS, MODE_PRIVATE)
-            .getString(RendererService.KEY_SPEAKER_IP, "")
-            .orEmpty()
-            .trim()
-        return if (RendererService.isReasonableIpv4(target)) target else null
-    }
-
-    private fun refreshVolume() {
-        val target = speakerAddress() ?: run {
-            volumeView.text = "volume —"
-            return
-        }
-        val appContext = applicationContext
-        Thread({
-            val read = runCatching { SamsungWamChannel.readVolumeRaw(appContext, target) }
-            runOnUiThread {
-                read.fold(
-                    onSuccess = { step ->
-                        volumeStep = step
-                        volumeView.text = "volume $step/${SamsungWamChannel.MAX_VOLUME_STEP}"
-                    },
-                    onFailure = {
-                        volumeStep = null
-                        volumeView.text = "volume ?"
-                    },
-                )
-            }
-        }, "wam-radio-volume-read").start()
-    }
-
-    private fun stepVolume(delta: Int) {
-        val target = speakerAddress() ?: run {
-            MobileUi.setStatus(
-                statusView,
-                "Configure the M5 address in WAM Bridge first.",
-                MobileUi.StatusKind.ERROR,
-            )
-            return
-        }
-        val appContext = applicationContext
-        Thread({
-            val current = volumeStep
-                ?: runCatching { SamsungWamChannel.readVolumeRaw(appContext, target) }.getOrNull()
-            if (current == null) {
-                runOnUiThread {
-                    volumeView.text = "volume ?"
-                    MobileUi.setStatus(
-                        statusView,
-                        "Could not read the speaker volume.",
-                        MobileUi.StatusKind.ERROR,
-                    )
-                }
-                return@Thread
-            }
-            val wanted = (current + delta)
-                .coerceIn(SamsungWamChannel.MIN_VOLUME_STEP, SamsungWamChannel.MAX_VOLUME_STEP)
-            val applied = runCatching {
-                val channel = SamsungWamChannel(appContext, target, clientUuid())
-                try {
-                    channel.connect()
-                    channel.setVolumeRaw(wanted)
-                } finally {
-                    channel.close()
-                }
-            }
-            runOnUiThread {
-                applied.fold(
-                    onSuccess = {
-                        volumeStep = wanted
-                        volumeView.text = "volume $wanted/${SamsungWamChannel.MAX_VOLUME_STEP}"
-                    },
-                    onFailure = { error ->
-                        MobileUi.setStatus(
-                            statusView,
-                            "Could not set volume: ${error.message ?: error.javaClass.simpleName}",
-                            MobileUi.StatusKind.ERROR,
-                        )
-                    },
-                )
-            }
-        }, "wam-radio-volume-step").start()
-    }
-
-    private fun refreshStatus() {
-        MobileUi.setStatus(
-            statusView,
-            if (RadioService.running) {
-                "● ${RadioService.lastStatus}"
-            } else {
-                "○ ${RadioService.lastStatus}"
-            },
-        )
-    }
-
     private enum class ExportFormat(
         val label: String,
         val extension: String,
@@ -694,7 +480,6 @@ class RadioStationsActivity : Activity() {
     }
 
     companion object {
-        private const val KEY_CLIENT_UUID = "radio_stations_client_uuid"
         private const val REQUEST_IMPORT = 7101
         private const val REQUEST_EXPORT = 7102
         private const val MAX_IMPORT_CHARS = 2 * 1024 * 1024

@@ -1,7 +1,6 @@
 package io.github.trvny.wambridge.mobile
 
 import android.app.Activity
-import android.content.Intent
 import android.os.Bundle
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -29,7 +28,7 @@ class AdvancedSettingsActivity : Activity() {
             MobileUi.header(
                 this,
                 "Advanced",
-                "Manual speaker address and low-level renderer controls.",
+                "Manual speaker address for networks where automatic discovery cannot reach the M5.",
             ),
         )
 
@@ -64,59 +63,12 @@ class AdvancedSettingsActivity : Activity() {
         )
         content.addView(speakerCard)
 
-        content.addView(MobileUi.sectionTitle(this, "Renderer"))
-        val rendererCard = MobileUi.card(this)
-        rendererCard.addView(
-            MobileUi.body(
-                this,
-                "Explicit service controls for troubleshooting. Normal DLNA starts can use Home, widgets or Quick Settings.",
-            ),
-        )
-        rendererCard.addView(MobileUi.row(this).apply {
-            setPadding(0, MobileUi.dp(this@AdvancedSettingsActivity, 10), 0, 0)
-            MobileUi.addWeighted(
-                this,
-                MobileUi.button(
-                    this@AdvancedSettingsActivity,
-                    "Start renderer",
-                    MobileUi.ButtonKind.PRIMARY,
-                ) {
-                    startForegroundService(
-                        Intent(this@AdvancedSettingsActivity, RendererService::class.java).apply {
-                            action = RendererService.ACTION_START
-                        },
-                    )
-                    renderStatus("Starting renderer…")
-                    refreshUntilSettled()
-                },
-            )
-            MobileUi.addWeighted(
-                this,
-                MobileUi.button(
-                    this@AdvancedSettingsActivity,
-                    "Stop",
-                    MobileUi.ButtonKind.DANGER,
-                ) {
-                    startService(
-                        Intent(this@AdvancedSettingsActivity, RendererService::class.java).apply {
-                            action = RendererService.ACTION_STOP
-                        },
-                    )
-                    renderStatus("Stopping renderer…")
-                    refreshUntilSettled()
-                },
-                marginDp = 0,
-            )
-        })
-        content.addView(rendererCard)
-
         setContentView(ScrollView(this).apply { addView(content) })
-        renderStatus()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        renderStatus()
+        MobileUi.setStatus(
+            statusView,
+            "Automatic discovery is preferred. Use this only as a manual override.",
+            MobileUi.StatusKind.INFO,
+        )
     }
 
     override fun onDestroy() {
@@ -160,35 +112,5 @@ class AdvancedSettingsActivity : Activity() {
         }
     }
 
-    private fun refreshUntilSettled(minimumPolls: Int = 2) {
-        if (isFinishing || isDestroyed) return
-        renderStatus()
-        if (minimumPolls > 0 || RendererService.transitioning) {
-            window.decorView.postDelayed(
-                {
-                    refreshUntilSettled((minimumPolls - 1).coerceAtLeast(0))
-                },
-                250,
-            )
-        }
-    }
 
-    private fun renderStatus(prefix: String? = null) {
-        if (!::statusView.isInitialized) return
-        val marker = when (RendererService.phase) {
-            RendererService.Phase.RUNNING -> "●"
-            RendererService.Phase.STARTING, RendererService.Phase.STOPPING -> "◐"
-            RendererService.Phase.STOPPED -> "○"
-        }
-        val text = prefix ?: marker + " " + RendererService.lastStatus
-        MobileUi.setStatus(
-            statusView,
-            text,
-            if (RendererService.phase == RendererService.Phase.RUNNING) {
-                MobileUi.StatusKind.SUCCESS
-            } else {
-                MobileUi.StatusKind.INFO
-            },
-        )
-    }
 }
