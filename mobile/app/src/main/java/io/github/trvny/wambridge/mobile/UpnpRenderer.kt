@@ -25,6 +25,7 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -428,29 +429,30 @@ internal class UpnpRenderer(
             try { previous.close() } catch (_: Exception) { }
         }
 
-        val lastProgressMs = AtomicLong(SystemClock.elapsedRealtime())
-        val watchdog = streamWatchdog.scheduleWithFixedDelay(
-            {
-                if (
-                    activeStream.get() === client &&
-                    streamRelayStalled(
-                        lastProgressMs = lastProgressMs.get(),
-                        nowMs = SystemClock.elapsedRealtime(),
-                        timeoutMs = STREAM_STALL_TIMEOUT_MS,
-                    )
-                ) {
-                    state.lastError = "Speaker stream stalled; releasing relay"
-                    streamSources.remove(client)?.disconnect()
-                    try { client.close() } catch (_: Exception) { }
-                }
-            },
-            STREAM_WATCHDOG_INTERVAL_MS,
-            STREAM_WATCHDOG_INTERVAL_MS,
-            TimeUnit.MILLISECONDS,
-        )
-
-        callbacks.onStreamOpened()
+        var watchdog: ScheduledFuture<*>? = null
         try {
+            callbacks.onStreamOpened()
+            val lastProgressMs = AtomicLong(SystemClock.elapsedRealtime())
+            watchdog = streamWatchdog.scheduleWithFixedDelay(
+                {
+                    if (
+                        activeStream.get() === client &&
+                        streamRelayStalled(
+                            lastProgressMs = lastProgressMs.get(),
+                            nowMs = SystemClock.elapsedRealtime(),
+                            timeoutMs = STREAM_STALL_TIMEOUT_MS,
+                        )
+                    ) {
+                        state.lastError = "Speaker stream stalled; releasing relay"
+                        streamSources.remove(client)?.disconnect()
+                        try { client.close() } catch (_: Exception) { }
+                    }
+                },
+                STREAM_WATCHDOG_INTERVAL_MS,
+                STREAM_WATCHDOG_INTERVAL_MS,
+                TimeUnit.MILLISECONDS,
+            )
+
             val source = state.currentUri
             require(isLocalPlayerUri(source)) { "Only this phone's HTTP sources are accepted" }
             val connection = (URI(source).toURL().openConnection() as HttpURLConnection).apply {
@@ -501,7 +503,7 @@ internal class UpnpRenderer(
                 connection.disconnect()
             }
         } finally {
-            watchdog.cancel(false)
+            watchdog?.cancel(false)
             if (activeStream.compareAndSet(client, null)) {
                 if (state.nextUri.isNotBlank()) {
                     state.currentUri = state.nextUri
