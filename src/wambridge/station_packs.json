@@ -37,7 +37,8 @@
       "url": "https://streamer.radio.co/s2c3cc784b/listen",
       "fallback_urls": [
         "https://streamer.radio.co:80/s2c3cc784b/listen"
-      ]
+      ],
+      "artwork_url": "https://cdn-profiles.tunein.com/s162771/images/logod.png"
     },
     {
       "alias": "bbc6",
@@ -49,7 +50,8 @@
       "url": "https://pl05.cdn.eurozet.pl/plu-gdn.mp3",
       "fallback_urls": [
         "https://ic2.smcdn.pl/4070-1.mp3"
-      ]
+      ],
+      "artwork_url": "https://cdn-profiles.tunein.com/s76567/images/logod.png"
     },
     {
       "alias": "minimalmix",
@@ -61,14 +63,16 @@
       "url": "http://zet-net-01.cdn.eurozet.pl:8400/",
       "fallback_urls": [
         "https://r.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx"
-      ]
+      ],
+      "artwork_url": "https://cdn-profiles.tunein.com/s76098/images/logod.png"
     },
     {
       "alias": "rmfmaxxx",
       "url": "https://rs201-krk.rmfstream.pl/rmf_maxxx",
       "fallback_urls": [
         "http://195.150.20.7/rmf_maxxx"
-      ]
+      ],
+      "artwork_url": "https://cdn-profiles.tunein.com/s48192/images/logod.png"
     },
     {
       "alias": "kaszebe",

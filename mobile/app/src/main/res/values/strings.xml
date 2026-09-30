@@ -12,4 +12,5 @@
     <string name="widget_volume_down">Volume down</string>
     <string name="widget_volume_up">Volume up</string>
     <string name="widget_stop_radio">Stop radio</string>
+    <string name="widget_artwork_description">Artwork for %1$s</string>
 </resources>

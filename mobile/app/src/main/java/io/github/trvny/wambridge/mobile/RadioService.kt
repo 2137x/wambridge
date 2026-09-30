@@ -18,6 +18,15 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal fun radioOwnerActive(starting: Boolean, running: Boolean, recovering: Boolean): Boolean =
     starting || running || recovering
 
+internal fun shouldIgnoreStartupVolumeZero(
+    raw: Int,
+    safeVolumeApplied: Boolean,
+    ignoreUntilElapsedMs: Long,
+    nowElapsedMs: Long,
+): Boolean =
+    raw == 0 &&
+        (!safeVolumeApplied || (ignoreUntilElapsedMs > 0L && nowElapsedMs <= ignoreUntilElapsedMs))
+
 class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Listener {
     private data class StationRequest(val alias: String, val tuneInId: String?)
     private data class RecoveryControls(val volume: Int, val muted: Boolean, val paused: Boolean)
@@ -45,8 +54,10 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
     private var activeFallback: String? = null
     private var streamNowPlaying = RadioNowPlaying()
     private var providerNowPlaying = RadioNowPlaying()
+    private var artworkRequestUrl: String? = null
     private var metadataRefresh: ScheduledFuture<*>? = null
     private var safeVolumeApplied = false
+    private var startupZeroIgnoreUntilMs = 0L
     private var targetVolume = SAFE_START_VOLUME
     private var muted = false
     private var speakerIp = ""
@@ -267,6 +278,8 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
             // Same startup rule as renderer and desktop radio: keep old firmware
             // silent while switching into URL playback. The proxy callback lifts
             // to step 3 only after the M5 has actually requested audio.
+            startupZeroIgnoreUntilMs =
+                SystemClock.elapsedRealtime() + STARTUP_ZERO_ECHO_WINDOW_MS
             activeChannel.setVolumeRaw(0)
             activeChannel.setMute(true)
             val recoveryControls = wifiRecoveryControls
@@ -539,13 +552,27 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
     }
 
     override fun onVolumeChanged(source: Any, raw: Int) {
-        // VolumeLevel has no request ID. Source identity rejects delayed replies from a
-        // retired session while still accepting physical changes on the channel being started.
-        if (destroyed || source !== volumeChannel || (!running && raw == 0)) return
+        // VolumeLevel has no request ID. Source identity rejects retired sessions.
+        // The deliberate startup SetVolume(0) may be reported after the audible
+        // SetVolume(3), so keep a short one-shot guard independent of safeVolumeApplied.
+        if (destroyed || source !== volumeChannel || !running) return
         execute {
-            // Re-check after serialization too: an old callback can be queued before a
-            // station switch and otherwise run after the new channel becomes active.
-            if (destroyed || !running || source !== volumeChannel) return@execute
+            if (destroyed || source !== volumeChannel || !running) return@execute
+            val now = SystemClock.elapsedRealtime()
+            if (
+                shouldIgnoreStartupVolumeZero(
+                    raw = raw,
+                    safeVolumeApplied = safeVolumeApplied,
+                    ignoreUntilElapsedMs = startupZeroIgnoreUntilMs,
+                    nowElapsedMs = now,
+                )
+            ) {
+                startupZeroIgnoreUntilMs = 0L
+                return@execute
+            }
+            if (startupZeroIgnoreUntilMs > 0L && now > startupZeroIgnoreUntilMs) {
+                startupZeroIgnoreUntilMs = 0L
+            }
             if (paused || muted) {
                 if (raw > 0) {
                     targetVolume = raw
@@ -631,6 +658,7 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
                 runCatching { channel?.pause() }
             }
             safeVolumeApplied = false
+            startupZeroIgnoreUntilMs = 0L
             targetVolume = SAFE_START_VOLUME
             muted = false
             paused = false
@@ -638,6 +666,7 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
             activeSourceUrl = null
             activeFallback = null
             streamNowPlaying = RadioNowPlaying()
+            artworkRequestUrl = null
             cancelMetadataProvider()
             canonicalSources = emptyList()
             runCatching { channel?.close() }
@@ -731,6 +760,7 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
                 station?.alias ?: desiredStation?.alias ?: "Samsung M5"
             },
             artworkUrl = nowPlaying.artworkUrl,
+            artwork = ArtworkLoader.cached(nowPlaying.artworkUrl),
         )
     }
 
@@ -738,13 +768,12 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
         title = providerNowPlaying.title ?: streamNowPlaying.title,
         artworkUrl = providerNowPlaying.artworkUrl
             ?: streamNowPlaying.artworkUrl
-            ?: tuneInArtworkUrl(station?.tuneInId ?: desiredStation?.tuneInId),
+            ?: station?.let(::radioStationArtworkUrl)
+            ?: tuneInArtworkUrl(desiredStation?.tuneInId),
     )
 
     private fun publishMetadataUpdate() {
-        publishRuntimeState(lastStatus)
-        startForeground(NOTIFICATION_ID, buildNotification(lastStatus))
-        WamBridgeWidget.updateAll(applicationContext)
+        publish(lastStatus)
     }
 
     private fun startMetadataProvider(selected: MobileRadioStation) {
@@ -792,6 +821,32 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
         publishRuntimeState(message)
         startForeground(NOTIFICATION_ID, buildNotification(message))
         WamBridgeWidget.updateAll(applicationContext)
+        requestArtworkIfNeeded()
+    }
+
+    private fun requestArtworkIfNeeded() {
+        val url = effectiveNowPlaying().artworkUrl
+            ?.trim()
+            ?.takeIf(String::isNotEmpty)
+            ?: return
+        if (ArtworkLoader.cached(url) != null || artworkRequestUrl == url) return
+
+        artworkRequestUrl = url
+        ArtworkLoader.prefetch(applicationContext, url) { bitmap ->
+            execute {
+                if (artworkRequestUrl == url) artworkRequestUrl = null
+                if (
+                    destroyed ||
+                    bitmap == null ||
+                    effectiveNowPlaying().artworkUrl != url
+                ) {
+                    return@execute
+                }
+                publishRuntimeState(lastStatus)
+                startForeground(NOTIFICATION_ID, buildNotification(lastStatus))
+                WamBridgeWidget.updateAll(applicationContext)
+            }
+        }
     }
 
     private fun createNotificationChannel() {
@@ -824,10 +879,13 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
             @Suppress("DEPRECATION")
             Notification.Builder(this)
         }
-        val nowPlaying = effectiveNowPlaying().title?.takeIf(String::isNotBlank)
+        val current = effectiveNowPlaying()
+        val nowPlaying = current.title?.takeIf(String::isNotBlank)
         val stationName = station?.alias ?: desiredStation?.alias
+        val artwork = ArtworkLoader.cached(current.artworkUrl)
         return builder
             .setSmallIcon(R.drawable.ic_qs_tile)
+            .setLargeIcon(artwork)
             .setContentTitle(nowPlaying ?: stationName?.let { "WAM Bridge · $it" } ?: "WAM Bridge · Radio")
             .setContentText(if (nowPlaying != null) stationName ?: message else message)
             .setContentIntent(openIntent)
@@ -878,6 +936,7 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
         private const val CHANNEL_ID = "wambridge-radio"
         private const val NOTIFICATION_ID = 5102
         private const val SAFE_START_VOLUME = 3
+        private const val STARTUP_ZERO_ECHO_WINDOW_MS = 5_000L
         private const val RENDERER_STOP_TIMEOUT_MS = 2_500L
         private const val TEARDOWN_TIMEOUT_MS = 1_500L
         private const val WIFI_FALLBACK_MS = 5_000L
