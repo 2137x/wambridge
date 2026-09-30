@@ -116,16 +116,18 @@ path.
 
 Passed on the M5: BBC Radio 1 (HLS) and Trójka (Ogg) play; Ogg `StreamTitle` reaches Now
 Playing; HLS -> Ogg switch without wedging; Stop during playback then restart; Czwórka (direct
-Shoutcast MP3) unchanged; Diagnostics stays on the selected Wi-Fi.
+Shoutcast MP3) unchanged; Diagnostics stays on the selected Wi-Fi. Follow-up 2026-09-30 kept
+BBC Radio 1, Trójka and Radio Paradise playing for at least 60 seconds each, and a quick Stop
+during startup did not wedge the radio path.
 
 Still to check on hardware:
 
-- [ ] Stop during transcoder startup (start BBC1, Stop from the notification within 1-2 s),
-  then start another station.
-- [ ] Each transcoded station stable for at least 60 s (only Trójka was listened to at length).
-- [ ] Volume on station start: confirm it lifts from 0 to the safe step 3 once the M5 pulls
-  audio and never stays at 0. Decide whether a station switch while already playing should
-  keep the current volume instead of re-running the safe start (existing `main` behaviour).
+- [x] Quick Stop during transcoder startup: one 2026-09-30 pass showed no wedge.
+- [ ] 60-second stability for the remaining transcoded defaults: BBC 6 Music and Fallout FM 5.
+  BBC Radio 1, Trójka and Radio Paradise passed on 2026-09-30.
+- [ ] Safe-start volume regression: the 2026-09-30 pass stayed at raw volume 0 instead of
+  returning to step 3. The radio-polish fix rejects the delayed startup `VolumeLevel=0` event
+  that was overwriting the safe target; re-check 0 -> 3 on the physical M5.
 - [ ] BBC HLS shows no track title (`Now playing: None`); confirm the stream carries no timed
   metadata rather than it being dropped.
 
@@ -163,8 +165,8 @@ Keep protocol archaeology out of the normal UI while still making failures expla
 
 Most of the daily-driver layer is shipped. The remaining sequence is deliberately hardware-led:
 
-1. finish the remaining HLS/Ogg hardware checks from section 8: startup Stop, 60 s stability,
-   safe-start volume and BBC timed-metadata verification;
+1. finish the remaining HLS/Ogg hardware checks from section 8: BBC6/Fallout stability,
+   re-test safe-start volume and verify BBC timed metadata;
 2. finish the 15/30/45/60-minute sleep-timer duration/readback pass;
 3. validate preset write commands before exposing physical preset editing on Android.
 

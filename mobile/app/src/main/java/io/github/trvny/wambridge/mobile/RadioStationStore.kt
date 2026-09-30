@@ -24,12 +24,20 @@ internal fun tuneInArtworkUrl(value: String?): String? {
     return "https://cdn-profiles.tunein.com/$id/images/logod.png"
 }
 
+private fun cleanArtworkUrl(value: String?): String? =
+    value?.trim()?.takeIf(String::isNotEmpty)?.let(::webArtworkUrl)
+
 internal data class MobileRadioStation(
     val alias: String,
     val urls: List<String>,
     // TuneIn is resolved at play time; saved URLs remain the ordered fallback.
     val tuneInId: String? = null,
+    // Optional visual-only source. It never changes radio playback routing.
+    val artworkUrl: String? = null,
 )
+
+internal fun radioStationArtworkUrl(station: MobileRadioStation): String? =
+    station.artworkUrl ?: tuneInArtworkUrl(station.tuneInId)
 
 internal fun radioStationSourceSummary(station: MobileRadioStation): String {
     val fallbacks = (station.urls.size - 1).coerceAtLeast(0)
@@ -126,6 +134,7 @@ internal fun exportRadioStationsJson(stations: List<MobileRadioStation>): String
                             put("alias", station.alias)
                             put("urls", JSONArray(station.urls))
                             station.tuneInId?.let { put("tunein_id", it) }
+                            station.artworkUrl?.let { put("artwork_url", it) }
                         },
                     )
                 }
@@ -183,12 +192,14 @@ private fun importRadioStationsJson(text: String): List<MobileRadioStation> {
             val tuneInId = item.optString("tunein_id").trim().takeIf(String::isNotEmpty)
                 ?.let(::validateTuneInId)
             val urls = item.optJSONArray("urls")?.let(::jsonStrings).orEmpty()
+            val artworkUrl = cleanArtworkUrl(item.optString("artwork_url"))
             if (alias.isNotEmpty()) {
                 add(
                     MobileRadioStation(
-                        alias,
-                        validateRadioUrls(urls, allowEmpty = tuneInId != null),
-                        tuneInId,
+                        alias = alias,
+                        urls = validateRadioUrls(urls, allowEmpty = tuneInId != null),
+                        tuneInId = tuneInId,
+                        artworkUrl = artworkUrl,
                     ),
                 )
             }
@@ -292,14 +303,22 @@ internal class RadioStationStore(context: Context) {
         return stationsForAliases(available, bundledPackAliases(QUICK_PACK))
     }
 
-    fun upsert(alias: String, urls: List<String>, tuneInId: String? = null): MobileRadioStation {
+    fun upsert(
+        alias: String,
+        urls: List<String>,
+        tuneInId: String? = null,
+        artworkUrl: String? = null,
+    ): MobileRadioStation {
         val cleanedAlias = alias.trim()
         require(cleanedAlias.isNotEmpty()) { "Station name cannot be empty" }
         val cleanedTuneInId = cleanTuneInId(tuneInId)
+        val cleanedArtwork = cleanArtworkUrl(artworkUrl)
+            ?: all().firstOrNull { it.alias.equals(cleanedAlias, ignoreCase = true) }?.artworkUrl
         val station = MobileRadioStation(
-            cleanedAlias,
-            validateRadioUrls(urls, allowEmpty = cleanedTuneInId != null),
-            cleanedTuneInId,
+            alias = cleanedAlias,
+            urls = validateRadioUrls(urls, allowEmpty = cleanedTuneInId != null),
+            tuneInId = cleanedTuneInId,
+            artworkUrl = cleanedArtwork,
         )
         val stations = loadSaved().filterNot {
             it.alias.equals(cleanedAlias, ignoreCase = true)
@@ -311,7 +330,7 @@ internal class RadioStationStore(context: Context) {
 
     fun importStations(stations: List<MobileRadioStation>): Int {
         stations.forEach { station ->
-            upsert(station.alias, station.urls, station.tuneInId)
+            upsert(station.alias, station.urls, station.tuneInId, station.artworkUrl)
         }
         return stations.size
     }
@@ -425,12 +444,14 @@ internal class RadioStationStore(context: Context) {
                     val alias = item.getString("alias").trim()
                     val urls = jsonStrings(item.getJSONArray("urls"))
                     val tuneInId = cleanTuneInId(item.optString(KEY_TUNEIN_ID))
+                    val artworkUrl = cleanArtworkUrl(item.optString(KEY_ARTWORK_URL))
                     if (alias.isNotEmpty()) {
                         add(
                             MobileRadioStation(
-                                alias,
-                                validateRadioUrls(urls, allowEmpty = tuneInId != null),
-                                tuneInId,
+                                alias = alias,
+                                urls = validateRadioUrls(urls, allowEmpty = tuneInId != null),
+                                tuneInId = tuneInId,
+                                artworkUrl = artworkUrl,
                             ),
                         )
                     }
@@ -477,6 +498,7 @@ internal class RadioStationStore(context: Context) {
             alias = alias,
             urls = validateRadioUrls(urls),
             tuneInId = cleanTuneInId(item.optString(KEY_TUNEIN_ID)),
+            artworkUrl = cleanArtworkUrl(item.optString(KEY_ARTWORK_URL)),
         )
     }
 
@@ -487,6 +509,7 @@ internal class RadioStationStore(context: Context) {
                 put("alias", station.alias)
                 put("urls", JSONArray(station.urls))
                 station.tuneInId?.let { put(KEY_TUNEIN_ID, it) }
+                station.artworkUrl?.let { put(KEY_ARTWORK_URL, it) }
             })
         }
         preferences.edit().putString(KEY_STATIONS, array.toString()).apply()
@@ -498,6 +521,7 @@ internal class RadioStationStore(context: Context) {
     companion object {
         private const val KEY_STATIONS = "radio_stations"
         private const val KEY_TUNEIN_ID = "tunein_id"
+        private const val KEY_ARTWORK_URL = "artwork_url"
         private const val KEY_HIDDEN_BUNDLED = "radio_hidden_bundled"
         private const val KEY_PINNED = "radio_pinned"
         private const val KEY_ORDER = "radio_order"

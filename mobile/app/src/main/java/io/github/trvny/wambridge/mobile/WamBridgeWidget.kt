@@ -231,6 +231,17 @@ class WamBridgeWidget : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_wam_bridge_controls)
             val rendererActive = RendererService.running
             val snapshot = SpeakerStateStore.current()
+            views.setImageViewResource(R.id.widget_artwork, R.mipmap.ic_launcher)
+            ArtworkLoader.cached(snapshot.artworkUrl)?.let { bitmap ->
+                views.setImageViewBitmap(R.id.widget_artwork, bitmap)
+            }
+            views.setContentDescription(
+                R.id.widget_artwork,
+                context.getString(
+                    R.string.widget_artwork_description,
+                    snapshot.stationAlias ?: context.getString(R.string.app_name),
+                ),
+            )
             views.setTextViewText(
                 R.id.widget_status,
                 when {

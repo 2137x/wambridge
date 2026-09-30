@@ -27,6 +27,7 @@ class RadioStationsActivity : Activity() {
     private lateinit var scrollView: ScrollView
     private val store by lazy { RadioStationStore(this) }
     private var editingAlias: String? = null
+    private var editingArtworkUrl: String? = null
     private var pendingExport: ExportFormat? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -221,6 +222,7 @@ class RadioStationsActivity : Activity() {
                 aliasInput.text.toString(),
                 urlsInput.text.toString().lines(),
                 tuneInInput.text.toString(),
+                editingArtworkUrl,
             )
             if (originalAlias != null && !originalAlias.equals(station.alias, ignoreCase = true)) {
                 store.remove(originalAlias)
@@ -373,6 +375,7 @@ class RadioStationsActivity : Activity() {
 
     private fun startEditing(station: MobileRadioStation, duplicate: Boolean) {
         editingAlias = if (duplicate) null else station.alias
+        editingArtworkUrl = station.artworkUrl
         aliasInput.setText(if (duplicate) "${station.alias} copy" else station.alias)
         urlsInput.setText(station.urls.joinToString("\n"))
         tuneInInput.setText(station.tuneInId.orEmpty())
@@ -385,6 +388,7 @@ class RadioStationsActivity : Activity() {
 
     private fun clearEditor() {
         editingAlias = null
+        editingArtworkUrl = null
         aliasInput.text.clear()
         urlsInput.text.clear()
         tuneInInput.text.clear()

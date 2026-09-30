@@ -35,13 +35,14 @@ internal fun tuneInPresetCard(
 internal fun savedRadioStationCard(
     context: Context,
     station: MobileRadioStation,
+    artworkUrl: String? = null,
     enabled: Boolean = true,
     onPlay: () -> Unit,
 ): View = radioEntryCard(
     context = context,
     title = station.alias,
     detail = radioStationSourceSummary(station),
-    artworkUrl = tuneInArtworkUrl(station.tuneInId),
+    artworkUrl = artworkUrl ?: radioStationArtworkUrl(station),
     enabled = enabled,
     onPlay = onPlay,
 )

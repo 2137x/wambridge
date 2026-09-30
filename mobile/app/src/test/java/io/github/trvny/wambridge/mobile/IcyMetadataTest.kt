@@ -17,6 +17,14 @@ class IcyMetadataTest {
     }
 
     @Test
+    fun webArtworkUrlNormalizesMixedCaseScheme() {
+        assertEquals(
+            "https://radio.example/cover.png",
+            webArtworkUrl(" HTTPS://radio.example/cover.png "),
+        )
+    }
+
+    @Test
     fun parsesImageStreamUrlAsArtwork() {
         val metadata =
             "StreamTitle='Artist - Track';StreamUrl='https://radio.example/covers/42.webp?size=512';"

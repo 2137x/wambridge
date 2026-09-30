@@ -13,6 +13,42 @@ class RadioRecoveryPolicyTest {
     }
 
     @Test
+    fun startupZeroGuardCoversSlowStreamsAndDelayedEchoes() {
+        assertTrue(
+            shouldIgnoreStartupVolumeZero(
+                raw = 0,
+                safeVolumeApplied = false,
+                ignoreUntilElapsedMs = 5_000L,
+                nowElapsedMs = 10_000L,
+            ),
+        )
+        assertTrue(
+            shouldIgnoreStartupVolumeZero(
+                raw = 0,
+                safeVolumeApplied = true,
+                ignoreUntilElapsedMs = 5_000L,
+                nowElapsedMs = 1_000L,
+            ),
+        )
+        assertFalse(
+            shouldIgnoreStartupVolumeZero(
+                raw = 3,
+                safeVolumeApplied = false,
+                ignoreUntilElapsedMs = 5_000L,
+                nowElapsedMs = 1_000L,
+            ),
+        )
+        assertFalse(
+            shouldIgnoreStartupVolumeZero(
+                raw = 0,
+                safeVolumeApplied = true,
+                ignoreUntilElapsedMs = 5_000L,
+                nowElapsedMs = 5_001L,
+            ),
+        )
+    }
+
+    @Test
     fun reconnectRetriesAreBoundedButOfflineWaitingIsNot() {
         assertTrue(RadioService.canRetryWifi(attempt = 5, waitingForNetwork = false))
         assertFalse(RadioService.canRetryWifi(attempt = 6, waitingForNetwork = false))

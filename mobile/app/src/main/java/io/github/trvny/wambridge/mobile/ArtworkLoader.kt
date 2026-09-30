@@ -11,6 +11,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 
+internal fun artworkSampleSize(width: Int, height: Int, maxEdge: Int): Int {
+    require(maxEdge > 0)
+    var sample = 1
+    while (width / sample > maxEdge * 2 || height / sample > maxEdge * 2) {
+        sample *= 2
+    }
+    return sample
+}
+
 /** Shared, Wi-Fi-bound artwork cache for TuneIn lists and Home Now Playing. */
 internal object ArtworkLoader {
     private val executor = Executors.newFixedThreadPool(3) { runnable ->
@@ -18,6 +27,33 @@ internal object ArtworkLoader {
     }
     private val cache = object : LruCache<String, Bitmap>(CACHE_KIB) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
+    }
+
+    fun cached(url: String?): Bitmap? {
+        val key = url?.trim()?.takeIf(::isHttpUrl) ?: return null
+        return synchronized(cache) { cache.get(key) }
+    }
+
+    fun prefetch(
+        context: Context,
+        url: String?,
+        onLoaded: (Bitmap?) -> Unit = {},
+    ) {
+        val key = url?.trim()?.takeIf(::isHttpUrl)
+        if (key == null) {
+            onLoaded(null)
+            return
+        }
+        cached(key)?.let {
+            onLoaded(it)
+            return
+        }
+        val appContext = context.applicationContext
+        executor.execute {
+            val bitmap = runCatching { download(appContext, key) }.getOrNull()
+            if (bitmap != null) synchronized(cache) { cache.put(key, bitmap) }
+            onLoaded(bitmap)
+        }
     }
 
     fun load(
@@ -50,7 +86,8 @@ internal object ArtworkLoader {
     }
 
     private fun isHttpUrl(value: String): Boolean =
-        value.startsWith("http://") || value.startsWith("https://")
+        value.startsWith("http://", ignoreCase = true) ||
+            value.startsWith("https://", ignoreCase = true)
 
     private fun download(context: Context, address: String): Bitmap {
         var lastError: Exception? = null
@@ -79,8 +116,35 @@ internal object ArtworkLoader {
                     }
                 }
                 val bytes = out.toByteArray()
-                return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+                    throw IOException("Unsupported artwork image")
+                }
+                val options = BitmapFactory.Options().apply {
+                    inSampleSize = artworkSampleSize(
+                        width = bounds.outWidth,
+                        height = bounds.outHeight,
+                        maxEdge = MAX_BITMAP_EDGE,
+                    )
+                }
+                val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
                     ?: throw IOException("Unsupported artwork image")
+                if (decoded.width <= MAX_BITMAP_EDGE && decoded.height <= MAX_BITMAP_EDGE) {
+                    return decoded
+                }
+                val scale = minOf(
+                    MAX_BITMAP_EDGE.toFloat() / decoded.width,
+                    MAX_BITMAP_EDGE.toFloat() / decoded.height,
+                )
+                val scaled = Bitmap.createScaledBitmap(
+                    decoded,
+                    (decoded.width * scale).toInt().coerceAtLeast(1),
+                    (decoded.height * scale).toInt().coerceAtLeast(1),
+                    true,
+                )
+                if (scaled !== decoded) decoded.recycle()
+                return scaled
             } catch (error: Exception) {
                 lastError = error
             } finally {
@@ -91,6 +155,7 @@ internal object ArtworkLoader {
     }
 
     private const val CACHE_KIB = 4 * 1024
+    private const val MAX_BITMAP_EDGE = 512
     private const val TIMEOUT_MS = 5_000
     private const val MAX_BYTES = 1024 * 1024
 }

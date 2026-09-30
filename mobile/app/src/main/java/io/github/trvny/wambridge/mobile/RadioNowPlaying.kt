@@ -18,7 +18,8 @@ internal fun webArtworkUrl(value: String?): String? {
         return null
     }
     if (uri.host.isNullOrBlank()) return null
-    return cleaned
+    val scheme = uri.scheme
+    return scheme.lowercase(Locale.ROOT) + cleaned.substring(scheme.length)
 }
 
 internal fun likelyArtworkUrl(value: String?): String? {

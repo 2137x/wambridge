@@ -771,7 +771,10 @@ class MainActivity : Activity() {
         }
         physicalPresetSubscription = PhysicalPresetStore.subscribe { snapshot ->
             runOnUiThread {
-                if (!isFinishing && !isDestroyed) renderPhysicalPresets(snapshot)
+                if (!isFinishing && !isDestroyed) {
+                    renderPhysicalPresets(snapshot)
+                    if (currentDestination == MainDestination.RADIO) renderRadioStations()
+                }
             }
         }
     }
@@ -1116,10 +1119,22 @@ class MainActivity : Activity() {
     private fun renderRadioStations() {
         if (!::radioStationsView.isInitialized) return
         val stations = RadioStationStore(this).all()
+        val m5ArtworkByTuneInId = PhysicalPresetStore.current().allPresets
+            .mapNotNull { preset ->
+                val id = preset.mediaId?.trim()?.takeIf(String::isNotEmpty)
+                val artwork = preset.thumbnail?.trim()?.takeIf(String::isNotEmpty)
+                if (id != null && artwork != null) id to artwork else null
+            }
+            .toMap()
         radioStationsView.removeAllViews()
         stations.forEach { station ->
             radioStationsView.addView(
-                savedRadioStationCard(this, station) { playSavedStation(station) },
+                savedRadioStationCard(
+                    context = this,
+                    station = station,
+                    artworkUrl = station.artworkUrl
+                        ?: station.tuneInId?.let(m5ArtworkByTuneInId::get),
+                ) { playSavedStation(station) },
             )
         }
         if (stations.isEmpty()) {

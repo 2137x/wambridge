@@ -24,6 +24,11 @@ class RadioMediaSessionContractTest {
         assertTrue(text.contains("PlaybackState.Builder"))
         assertTrue(text.contains("MediaMetadata.Builder"))
         assertTrue(text.contains("METADATA_KEY_ART_URI"))
+        assertTrue(text.contains("METADATA_KEY_ALBUM_ART"))
+        assertTrue(text.contains("addCustomAction"))
+        assertTrue(text.contains("ACTION_VOLUME_DOWN"))
+        assertTrue(text.contains("ACTION_VOLUME_UP"))
+        assertTrue(text.contains("ACTION_MUTE"))
     }
 
     @Test

@@ -116,6 +116,40 @@ class RadioStationDefaultsTest {
     }
 
     @Test
+    fun artworkSamplingBoundsLargeDecodedImages() {
+        assertEquals(1, artworkSampleSize(512, 512, 512))
+        assertEquals(2, artworkSampleSize(2048, 1024, 512))
+        assertEquals(4, artworkSampleSize(4096, 4096, 512))
+    }
+
+    @Test
+    fun stationArtworkPrefersExplicitVisualSourceWithoutChangingTuneInRouting() {
+        val station = MobileRadioStation(
+            alias = "direct",
+            urls = listOf("https://radio.example/live"),
+            artworkUrl = "https://radio.example/logo.png",
+        )
+        assertEquals("https://radio.example/logo.png", radioStationArtworkUrl(station))
+        assertEquals(
+            "https://cdn-profiles.tunein.com/s24939/images/logod.png",
+            radioStationArtworkUrl(bundled.first()),
+        )
+    }
+
+    @Test
+    fun jsonRoundTripPreservesOptionalArtwork() {
+        val source = listOf(
+            MobileRadioStation(
+                alias = "direct",
+                urls = listOf("https://radio.example/live"),
+                artworkUrl = "https://radio.example/logo.png",
+            ),
+        )
+        val imported = importRadioStations("stations.json", exportRadioStationsJson(source))
+        assertEquals(source, imported)
+    }
+
+    @Test
     fun stationSourceSummaryDistinguishesTuneInAndFallbacks() {
         assertEquals(
             "TuneIn s24939 · direct backup · 1 fallback",

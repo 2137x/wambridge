@@ -3,6 +3,7 @@ package io.github.trvny.wambridge.mobile
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
@@ -37,6 +38,17 @@ internal class RadioMediaSession(
                 override fun onStop() {
                     if (RadioService.active) dispatch(RadioService.ACTION_STOP)
                 }
+
+                override fun onCustomAction(action: String, extras: android.os.Bundle?) {
+                    if (!RadioService.active) return
+                    when (action) {
+                        RadioService.ACTION_STOP,
+                        RadioService.ACTION_VOLUME_DOWN,
+                        RadioService.ACTION_VOLUME_UP,
+                        RadioService.ACTION_MUTE,
+                        -> dispatch(action)
+                    }
+                }
             },
         )
     }
@@ -53,18 +65,52 @@ internal class RadioMediaSession(
         title: String?,
         source: String?,
         artworkUrl: String? = null,
+        artwork: Bitmap? = null,
     ) {
         if (closed) return
-        session.setPlaybackState(
-            PlaybackState.Builder()
-                .setActions(playbackActions(state.actions))
-                .setState(
-                    playbackState(state.playback),
-                    PlaybackState.PLAYBACK_POSITION_UNKNOWN,
-                    if (state.playback == RadioMediaPlayback.PLAYING) 1f else 0f,
-                )
-                .build(),
-        )
+        val playback = PlaybackState.Builder()
+            .setActions(playbackActions(state.actions))
+            .setState(
+                playbackState(state.playback),
+                PlaybackState.PLAYBACK_POSITION_UNKNOWN,
+                if (state.playback == RadioMediaPlayback.PLAYING) 1f else 0f,
+            )
+        if (state.playback != RadioMediaPlayback.STOPPED) {
+            playback.addCustomAction(
+                PlaybackState.CustomAction.Builder(
+                    RadioService.ACTION_STOP,
+                    "Stop",
+                    R.drawable.ic_media_stop,
+                ).build(),
+            )
+        }
+        if (
+            state.playback == RadioMediaPlayback.PLAYING ||
+            state.playback == RadioMediaPlayback.PAUSED
+        ) {
+            playback.addCustomAction(
+                PlaybackState.CustomAction.Builder(
+                    RadioService.ACTION_VOLUME_DOWN,
+                    "Volume down",
+                    R.drawable.ic_media_volume_down,
+                ).build(),
+            )
+            playback.addCustomAction(
+                PlaybackState.CustomAction.Builder(
+                    RadioService.ACTION_VOLUME_UP,
+                    "Volume up",
+                    R.drawable.ic_media_volume_up,
+                ).build(),
+            )
+            playback.addCustomAction(
+                PlaybackState.CustomAction.Builder(
+                    RadioService.ACTION_MUTE,
+                    "Mute",
+                    R.drawable.ic_media_mute,
+                ).build(),
+            )
+        }
+        session.setPlaybackState(playback.build())
         val metadata = MediaMetadata.Builder()
             .putString(
                 MediaMetadata.METADATA_KEY_TITLE,
@@ -77,6 +123,10 @@ internal class RadioMediaSession(
         artworkUrl?.takeIf { it.isNotBlank() }?.let {
             metadata.putString(MediaMetadata.METADATA_KEY_ART_URI, it)
             metadata.putString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI, it)
+        }
+        artwork?.let {
+            metadata.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, it)
+            metadata.putBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON, it)
         }
         session.setMetadata(metadata.build())
         session.isActive = state.playback != RadioMediaPlayback.STOPPED

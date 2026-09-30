@@ -23,6 +23,18 @@ class AndroidUxContractTest {
     }
 
     @Test
+    fun expandedWidgetShowsCachedNowPlayingArtwork() {
+        val layout = File("src/main/res/layout/widget_wam_bridge_controls.xml").readText()
+        val widget = File(
+            "src/main/java/io/github/trvny/wambridge/mobile/WamBridgeWidget.kt",
+        ).readText()
+
+        assertTrue(layout.contains("widget_artwork"))
+        assertTrue(widget.contains("ArtworkLoader.cached(snapshot.artworkUrl)"))
+        assertTrue(widget.contains("setImageViewBitmap(R.id.widget_artwork"))
+    }
+
+    @Test
     fun widgetAndTileStartOnlyTheRendererAndDoNotOwnDiscovery() {
         val widget = File(
             "src/main/java/io/github/trvny/wambridge/mobile/WamBridgeWidget.kt",
