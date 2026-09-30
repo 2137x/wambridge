@@ -33,6 +33,13 @@ class RendererRoutingTest {
     )
 
     @Test
+    fun `stalled stream relay is detected only after its timeout`() {
+        assertEquals(false, streamRelayStalled(1_000L, 30_999L, 30_000L))
+        assertEquals(true, streamRelayStalled(1_000L, 31_000L, 30_000L))
+        assertEquals(false, streamRelayStalled(1_000L, 60_000L, 0L))
+    }
+
+    @Test
     fun `the speaker gets the audio stream`() {
         assertEquals(
             RendererRoute.Allowed(RendererEndpoint.STREAM),

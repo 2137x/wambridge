@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.net.wifi.WifiManager
+import android.os.SystemClock
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
@@ -24,8 +25,17 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+
+internal fun streamRelayStalled(
+    lastProgressMs: Long,
+    nowMs: Long,
+    timeoutMs: Long,
+): Boolean = timeoutMs > 0L && nowMs - lastProgressMs >= timeoutMs
 
 internal interface RendererCallbacks {
     fun onPlay(rendererStreamUrl: String)
@@ -56,6 +66,9 @@ internal class UpnpRenderer(
     val wifiTarget: WifiLan.Target,
 ) : AutoCloseable {
     private val executor = Executors.newCachedThreadPool()
+    private val streamWatchdog = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "wam-upnp-stream-watchdog").apply { isDaemon = true }
+    }
     private val running = AtomicBoolean(false)
     private val clientSockets = ConcurrentHashMap.newKeySet<Socket>()
     private val streamSources = ConcurrentHashMap<Socket, HttpURLConnection>()
@@ -416,8 +429,30 @@ internal class UpnpRenderer(
             try { previous.close() } catch (_: Exception) { }
         }
 
-        callbacks.onStreamOpened()
+        var watchdog: ScheduledFuture<*>? = null
         try {
+            callbacks.onStreamOpened()
+            val lastProgressMs = AtomicLong(SystemClock.elapsedRealtime())
+            watchdog = streamWatchdog.scheduleWithFixedDelay(
+                {
+                    if (
+                        activeStream.get() === client &&
+                        streamRelayStalled(
+                            lastProgressMs = lastProgressMs.get(),
+                            nowMs = SystemClock.elapsedRealtime(),
+                            timeoutMs = STREAM_STALL_TIMEOUT_MS,
+                        )
+                    ) {
+                        state.lastError = "Speaker stream stalled; releasing relay"
+                        streamSources.remove(client)?.disconnect()
+                        try { client.close() } catch (_: Exception) { }
+                    }
+                },
+                STREAM_WATCHDOG_INTERVAL_MS,
+                STREAM_WATCHDOG_INTERVAL_MS,
+                TimeUnit.MILLISECONDS,
+            )
+
             val source = state.currentUri
             require(isLocalPlayerUri(source)) { "Only this phone's HTTP sources are accepted" }
             val connection = (URI(source).toURL().openConnection() as HttpURLConnection).apply {
@@ -444,23 +479,31 @@ internal class UpnpRenderer(
                     "OK",
                     mapOf("Content-Type" to outgoing, "Connection" to "close", "Cache-Control" to "no-store"),
                 )
+                lastProgressMs.set(SystemClock.elapsedRealtime())
                 connection.inputStream.use { raw ->
                     val input = BufferedInputStream(raw, 64 * 1024)
                     if (l16) {
                         val rate = parameter(contentType, "rate")?.toIntOrNull() ?: 44_100
                         val channels = parameter(contentType, "channels")?.toIntOrNull() ?: 2
                         out.write(wavHeader(rate, channels, 16))
-                        copyL16(input, out)
+                        lastProgressMs.set(SystemClock.elapsedRealtime())
+                        copyL16(input, out) {
+                            lastProgressMs.set(SystemClock.elapsedRealtime())
+                        }
                     } else {
-                        input.copyTo(out, 64 * 1024)
+                        copyStream(input, out) {
+                            lastProgressMs.set(SystemClock.elapsedRealtime())
+                        }
                     }
                     out.flush()
+                    lastProgressMs.set(SystemClock.elapsedRealtime())
                 }
             } finally {
                 streamSources.remove(client)
                 connection.disconnect()
             }
         } finally {
+            watchdog?.cancel(false)
             if (activeStream.compareAndSet(client, null)) {
                 if (state.nextUri.isNotBlank()) {
                     state.currentUri = state.nextUri
@@ -473,7 +516,25 @@ internal class UpnpRenderer(
         }
     }
 
-    private fun copyL16(input: BufferedInputStream, out: BufferedOutputStream) {
+    private fun copyStream(
+        input: BufferedInputStream,
+        out: BufferedOutputStream,
+        onProgress: () -> Unit,
+    ) {
+        val buffer = ByteArray(64 * 1024)
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) return
+            out.write(buffer, 0, count)
+            onProgress()
+        }
+    }
+
+    private fun copyL16(
+        input: BufferedInputStream,
+        out: BufferedOutputStream,
+        onProgress: () -> Unit,
+    ) {
         val buffer = ByteArray(64 * 1024)
         var carry: Byte? = null
         while (true) {
@@ -484,6 +545,7 @@ internal class UpnpRenderer(
             carry?.let { high ->
                 if (count > 0) {
                     out.write(byteArrayOf(buffer[0], high))
+                    onProgress()
                     carry = null
                     start = 1
                 }
@@ -496,7 +558,10 @@ internal class UpnpRenderer(
                 buffer[index + 1] = high
                 index += 2
             }
-            if (index > start) out.write(buffer, start, index - start)
+            if (index > start) {
+                out.write(buffer, start, index - start)
+                onProgress()
+            }
             if (index < count) carry = buffer[index]
         }
     }
@@ -831,6 +896,7 @@ internal class UpnpRenderer(
         multicastLock?.let { if (it.isHeld) it.release() }
         multicastLock = null
         executor.shutdownNow()
+        streamWatchdog.shutdownNow()
     }
 
     private data class HttpRequest(
@@ -851,6 +917,8 @@ internal class UpnpRenderer(
         private const val CLIENT_TIMEOUT_MS = 15_000
         private const val SOURCE_CONNECT_TIMEOUT_MS = 5_000
         private const val SOURCE_READ_TIMEOUT_MS = 15_000
+        private const val STREAM_WATCHDOG_INTERVAL_MS = 5_000L
+        private const val STREAM_STALL_TIMEOUT_MS = 30_000L
         private const val AV_TRANSPORT = "urn:schemas-upnp-org:service:AVTransport:1"
         private const val RENDERING_CONTROL = "urn:schemas-upnp-org:service:RenderingControl:1"
         private const val CONNECTION_MANAGER = "urn:schemas-upnp-org:service:ConnectionManager:1"
