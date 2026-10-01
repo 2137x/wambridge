@@ -128,8 +128,10 @@ Still to check on hardware:
 - [ ] Safe-start volume regression: the 2026-09-30 pass stayed at raw volume 0 instead of
   returning to step 3. The radio-polish fix rejects the delayed startup `VolumeLevel=0` event
   that was overwriting the safe target; re-check 0 -> 3 on the physical M5.
-- [ ] BBC HLS shows no track title (`Now playing: None`); confirm the stream carries no timed
-  metadata rather than it being dropped.
+- [x] BBC HLS shows no track title (`Now playing: None`): expected. Checked 2026-10-01 against
+  the BBC Radio 1 320k rendition: segments carry only PAT, PMT and one audio PID (no ID3
+  timed-metadata PES), the playlist has no `EXT-X-DATERANGE`, and every `#EXTINF` title is
+  `no desc`. There is nothing for Media3 to forward.
 
 ## 9. Quick actions everywhere
 
@@ -166,7 +168,7 @@ Keep protocol archaeology out of the normal UI while still making failures expla
 Most of the daily-driver layer is shipped. The remaining sequence is deliberately hardware-led:
 
 1. finish the remaining HLS/Ogg hardware checks from section 8: BBC6/Fallout stability,
-   re-test safe-start volume and verify BBC timed metadata;
+   re-test safe-start volume;
 2. finish the 15/30/45/60-minute sleep-timer duration/readback pass;
 3. validate preset write commands before exposing physical preset editing on Android.
 
