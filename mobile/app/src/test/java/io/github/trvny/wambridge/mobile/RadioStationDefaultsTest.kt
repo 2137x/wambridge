@@ -7,10 +7,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RadioStationDefaultsTest {
-    private val trojkaArtwork = tuneInArtworkUrl("s15984")
+    private val trojkaArtwork = tuneInArtworkUrl(TROJKA_TUNEIN_ID)
     private val bundled = listOf(
         MobileRadioStation("bbc1", listOf("http://builtin/bbc1"), "s24939"),
-        MobileRadioStation("trojka", listOf("http://builtin/trojka"), "s15984"),
+        MobileRadioStation("trojka", listOf("http://builtin/trojka"), TROJKA_TUNEIN_ID),
         MobileRadioStation("czworka", listOf("http://builtin/czworka"), "s118200"),
     )
 
@@ -269,6 +269,7 @@ class RadioStationDefaultsTest {
     }
     companion object {
         private const val RADIO_ALIAS = "radio"
+        private const val TROJKA_TUNEIN_ID = "s15984"
     }
 
 }
