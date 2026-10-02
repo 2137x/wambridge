@@ -33,6 +33,7 @@ class StationPackTests(TestCase):
         self.assertEqual(
             {
                 "radioparadise": "s13606",
+                "electroswing": "s162771",
                 "bbc6": "s44491",
                 "minimalmix": "s151855",
                 "kaszebe": "s77862",
@@ -43,6 +44,7 @@ class StationPackTests(TestCase):
                 alias: stations[alias].tunein_id
                 for alias in (
                     "radioparadise",
+                    "electroswing",
                     "bbc6",
                     "minimalmix",
                     "kaszebe",
@@ -54,6 +56,7 @@ class StationPackTests(TestCase):
         self.assertTrue(
             all(stations[alias].all_urls for alias in (
                 "radioparadise",
+                "electroswing",
                 "bbc6",
                 "minimalmix",
                 "kaszebe",

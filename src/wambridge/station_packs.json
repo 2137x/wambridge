@@ -38,7 +38,8 @@
       "fallback_urls": [
         "https://streamer.radio.co:80/s2c3cc784b/listen"
       ],
-      "artwork_url": "https://cdn-profiles.tunein.com/s162771/images/logod.png"
+      "artwork_url": "https://cdn-profiles.tunein.com/s162771/images/logod.png",
+      "tunein_id": "s162771"
     },
     {
       "alias": "bbc6",
