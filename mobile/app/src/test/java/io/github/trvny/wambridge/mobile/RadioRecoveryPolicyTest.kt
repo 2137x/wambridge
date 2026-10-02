@@ -62,4 +62,29 @@ class RadioRecoveryPolicyTest {
         assertEquals(60_000L, RadioService.wifiRetryDelayMs(5, waitingForNetwork = false))
         assertEquals(5_000L, RadioService.wifiRetryDelayMs(8, waitingForNetwork = true))
     }
+
+    @Test
+    fun stationSwitchKeepsAudibleVolumeButColdStartStaysSafe() {
+        assertEquals(3, radioStartVolume(recoveryVolume = null, switchingFromVolume = null, safeStartVolume = 3))
+        assertEquals(12, radioStartVolume(recoveryVolume = null, switchingFromVolume = 12, safeStartVolume = 3))
+        assertEquals(7, radioStartVolume(recoveryVolume = 7, switchingFromVolume = 12, safeStartVolume = 3))
+    }
+
+    @Test
+    fun onlyAnAudibleStationCarriesItsVolumeIntoASwitch() {
+        fun carried(
+            running: Boolean = true,
+            safe: Boolean = true,
+            muted: Boolean = false,
+            paused: Boolean = false,
+            volume: Int = 12,
+        ) = radioSwitchVolume(running, safe, muted, paused, volume)
+
+        assertEquals(12, carried())
+        assertEquals(null, carried(running = false))
+        assertEquals(null, carried(safe = false))
+        assertEquals(null, carried(muted = true))
+        assertEquals(null, carried(paused = true))
+        assertEquals(null, carried(volume = 0))
+    }
 }

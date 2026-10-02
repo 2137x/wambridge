@@ -27,6 +27,32 @@ internal fun shouldIgnoreStartupVolumeZero(
     raw == 0 &&
         (!safeVolumeApplied || (ignoreUntilElapsedMs > 0L && nowElapsedMs <= ignoreUntilElapsedMs))
 
+/**
+ * Volume a station start lifts to once the M5 has actually requested audio. A Wi-Fi recovery
+ * restores what it saved; switching stations while one is already audible keeps the listener's
+ * level; a cold start or a start after Stop begins at the safe step. Every start still passes
+ * through volume 0 and mute first.
+ */
+/**
+ * The level a station switch may carry over: only one the listener is hearing right now. A
+ * station still in its silent startup, or one muted, paused or turned down to 0, carries
+ * nothing, because the next start resets mute and pause and would otherwise surface a level
+ * nobody is listening at.
+ */
+internal fun radioSwitchVolume(
+    running: Boolean,
+    safeVolumeApplied: Boolean,
+    muted: Boolean,
+    paused: Boolean,
+    targetVolume: Int,
+): Int? = targetVolume.takeIf { running && safeVolumeApplied && !muted && !paused && it > 0 }
+
+internal fun radioStartVolume(
+    recoveryVolume: Int?,
+    switchingFromVolume: Int?,
+    safeStartVolume: Int,
+): Int = recoveryVolume ?: switchingFromVolume ?: safeStartVolume
+
 class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Listener {
     private data class StationRequest(val alias: String, val tuneInId: String?)
     private data class RecoveryControls(val volume: Int, val muted: Boolean, val paused: Boolean)
@@ -249,6 +275,13 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
 
     private fun startStation(alias: String, tuneInId: String? = null) {
         if (destroyed) return
+        val switchingFromVolume = radioSwitchVolume(
+            running = running,
+            safeVolumeApplied = safeVolumeApplied,
+            muted = muted,
+            paused = paused,
+            targetVolume = targetVolume,
+        )
         stopRadio(removeForeground = false, clearDesired = false)
         if (!releaseRendererForRadioStart()) return
 
@@ -284,7 +317,11 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
             activeChannel.setMute(true)
             val recoveryControls = wifiRecoveryControls
             safeVolumeApplied = false
-            targetVolume = recoveryControls?.volume ?: SAFE_START_VOLUME
+            targetVolume = radioStartVolume(
+                recoveryVolume = recoveryControls?.volume,
+                switchingFromVolume = switchingFromVolume,
+                safeStartVolume = SAFE_START_VOLUME,
+            )
             muted = recoveryControls?.muted ?: false
             paused = recoveryControls?.paused ?: false
             activeChannel.offerStream(activeProxy.url)
@@ -296,7 +333,8 @@ class RadioService : Service(), RadioProxyServer.Listener, SamsungWamChannel.Lis
             activeProxy = null
             activeChannel = null
             // Start state belongs to the command, not to delayed speaker/proxy callbacks.
-            // Recovery keeps pause/mute/volume; an explicit play starts from clean defaults.
+            // Recovery keeps pause/mute/volume; an explicit play starts unpaused and unmuted,
+            // at the safe step unless it replaces a station that was already audible.
             running = true
             cancelWifiRecovery()
             startMetadataProvider(selected)
