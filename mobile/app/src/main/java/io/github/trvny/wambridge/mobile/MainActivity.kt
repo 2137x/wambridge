@@ -297,6 +297,17 @@ class MainActivity : Activity() {
 
         radioPresetStatusView = MobileUi.status(this, "Waiting for M5…")
         content.addView(radioPresetStatusView)
+        // Stations start from this tab, so stopping one must not need a trip back to Home.
+        content.addView(MobileUi.row(this).apply {
+            setPadding(0, MobileUi.dp(this@MainActivity, 10), 0, 0)
+            MobileUi.addWeighted(
+                this,
+                MobileUi.button(this@MainActivity, "Stop", MobileUi.ButtonKind.DANGER) {
+                    stopHomePlayback(radioPresetStatusView)
+                },
+                marginDp = 0,
+            )
+        })
 
         content.addView(MobileUi.sectionTitle(this, "Physical Radio buttons"))
         val physical = MobileUi.card(this)
@@ -1262,8 +1273,8 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun stopHomePlayback() {
-        MobileUi.setStatus(homeStatusView, "Stopping playback…")
+    private fun stopHomePlayback(feedbackView: TextView = homeStatusView) {
+        MobileUi.setStatus(feedbackView, "Stopping playback…")
         when {
             RadioService.active -> {
                 startService(
