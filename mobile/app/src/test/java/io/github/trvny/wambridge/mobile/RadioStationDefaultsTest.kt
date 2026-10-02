@@ -28,6 +28,46 @@ class RadioStationDefaultsTest {
     }
 
     @Test
+    fun savedOverrideBackfillsBundledArtworkWithoutChangingPlaybackRouting() {
+        val bundledStation = MobileRadioStation(
+            alias = "radio",
+            urls = listOf("https://bundled.example/live"),
+            tuneInId = "s123",
+        )
+        val saved = MobileRadioStation(
+            alias = "radio",
+            urls = listOf("https://custom.example/live"),
+        )
+
+        val merged = mergeRadioStations(listOf(saved), listOf(bundledStation)).single()
+
+        assertEquals(saved.urls, merged.urls)
+        assertNull(merged.tuneInId)
+        assertEquals(
+            "https://cdn-profiles.tunein.com/s123/images/logod.png",
+            merged.artworkUrl,
+        )
+    }
+
+    @Test
+    fun savedExplicitArtworkStillWinsBundledArtwork() {
+        val bundledStation = MobileRadioStation(
+            alias = "radio",
+            urls = listOf("https://bundled.example/live"),
+            artworkUrl = "https://bundled.example/logo.png",
+        )
+        val saved = MobileRadioStation(
+            alias = "radio",
+            urls = listOf("https://custom.example/live"),
+            artworkUrl = "https://custom.example/logo.png",
+        )
+
+        val merged = mergeRadioStations(listOf(saved), listOf(bundledStation)).single()
+
+        assertEquals("https://custom.example/logo.png", merged.artworkUrl)
+    }
+
+    @Test
     fun hiddenBundledStationStaysDeleted() {
         val merged = mergeRadioStations(
             saved = emptyList(),
