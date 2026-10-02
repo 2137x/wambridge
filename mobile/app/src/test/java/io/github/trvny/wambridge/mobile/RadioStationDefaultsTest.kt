@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RadioStationDefaultsTest {
+    private val trojkaArtwork = tuneInArtworkUrl("s15984")
     private val bundled = listOf(
         MobileRadioStation("bbc1", listOf("http://builtin/bbc1"), "s24939"),
         MobileRadioStation("trojka", listOf("http://builtin/trojka"), "s15984"),
@@ -23,19 +24,22 @@ class RadioStationDefaultsTest {
         val custom = MobileRadioStation("trojka", listOf("http://custom/trojka"))
         val merged = mergeRadioStations(listOf(custom), bundled)
 
-        assertEquals(custom, merged.first { it.alias == "trojka" })
+        assertEquals(
+            custom.copy(artworkUrl = trojkaArtwork),
+            merged.first { it.alias == "trojka" },
+        )
         assertEquals(3, merged.size)
     }
 
     @Test
     fun savedOverrideBackfillsBundledArtworkWithoutChangingPlaybackRouting() {
         val bundledStation = MobileRadioStation(
-            alias = "radio",
+            alias = RADIO_ALIAS,
             urls = listOf("https://bundled.example/live"),
             tuneInId = "s123",
         )
         val saved = MobileRadioStation(
-            alias = "radio",
+            alias = RADIO_ALIAS,
             urls = listOf("https://custom.example/live"),
         )
 
@@ -52,12 +56,12 @@ class RadioStationDefaultsTest {
     @Test
     fun savedExplicitArtworkStillWinsBundledArtwork() {
         val bundledStation = MobileRadioStation(
-            alias = "radio",
+            alias = RADIO_ALIAS,
             urls = listOf("https://bundled.example/live"),
             artworkUrl = "https://bundled.example/logo.png",
         )
         val saved = MobileRadioStation(
-            alias = "radio",
+            alias = RADIO_ALIAS,
             urls = listOf("https://custom.example/live"),
             artworkUrl = "https://custom.example/logo.png",
         )
@@ -87,7 +91,10 @@ class RadioStationDefaultsTest {
             bundled = bundled,
             hiddenBundledAliases = setOf("trojka"),
         )
-        assertEquals(custom, merged.first { it.alias == "trojka" })
+        assertEquals(
+            custom.copy(artworkUrl = trojkaArtwork),
+            merged.first { it.alias == "trojka" },
+        )
     }
 
     @Test
@@ -260,4 +267,8 @@ class RadioStationDefaultsTest {
         assertFalse(m3u.contains("tune-only"))
         assertTrue(pls.contains("NumberOfEntries=2"))
     }
+    companion object {
+        private const val RADIO_ALIAS = "radio"
+    }
+
 }
