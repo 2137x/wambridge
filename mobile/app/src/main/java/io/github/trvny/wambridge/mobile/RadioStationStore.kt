@@ -61,7 +61,16 @@ internal fun mergeRadioStations(
     val hidden = hiddenBundledAliases.mapTo(mutableSetOf()) { it.lowercase() }
     val merged = bundled.mapNotNull { station ->
         val key = station.alias.lowercase()
-        savedByAlias[key] ?: station.takeUnless { key in hidden }
+        val savedStation = savedByAlias[key]
+        when {
+            savedStation != null -> savedStation.copy(
+                // User routing still wins. Only backfill visual metadata added
+                // by a newer bundled pack so existing installs gain station logos.
+                artworkUrl = savedStation.artworkUrl ?: radioStationArtworkUrl(station),
+            )
+            key in hidden -> null
+            else -> station
+        }
     }.toMutableList()
     val bundledAliases = bundled.mapTo(mutableSetOf()) { it.alias.lowercase() }
     merged += saved.filterNot { it.alias.lowercase() in bundledAliases }

@@ -7,9 +7,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RadioStationDefaultsTest {
+    private val trojkaArtwork = tuneInArtworkUrl(TROJKA_TUNEIN_ID)
     private val bundled = listOf(
         MobileRadioStation("bbc1", listOf("http://builtin/bbc1"), "s24939"),
-        MobileRadioStation("trojka", listOf("http://builtin/trojka"), "s15984"),
+        MobileRadioStation("trojka", listOf("http://builtin/trojka"), TROJKA_TUNEIN_ID),
         MobileRadioStation("czworka", listOf("http://builtin/czworka"), "s118200"),
     )
 
@@ -23,8 +24,51 @@ class RadioStationDefaultsTest {
         val custom = MobileRadioStation("trojka", listOf("http://custom/trojka"))
         val merged = mergeRadioStations(listOf(custom), bundled)
 
-        assertEquals(custom, merged.first { it.alias == "trojka" })
+        assertEquals(
+            custom.copy(artworkUrl = trojkaArtwork),
+            merged.first { it.alias == "trojka" },
+        )
         assertEquals(3, merged.size)
+    }
+
+    @Test
+    fun savedOverrideBackfillsBundledArtworkWithoutChangingPlaybackRouting() {
+        val bundledStation = MobileRadioStation(
+            alias = RADIO_ALIAS,
+            urls = listOf("https://bundled.example/live"),
+            tuneInId = "s123",
+        )
+        val saved = MobileRadioStation(
+            alias = RADIO_ALIAS,
+            urls = listOf("https://custom.example/live"),
+        )
+
+        val merged = mergeRadioStations(listOf(saved), listOf(bundledStation)).single()
+
+        assertEquals(saved.urls, merged.urls)
+        assertNull(merged.tuneInId)
+        assertEquals(
+            "https://cdn-profiles.tunein.com/s123/images/logod.png",
+            merged.artworkUrl,
+        )
+    }
+
+    @Test
+    fun savedExplicitArtworkStillWinsBundledArtwork() {
+        val bundledStation = MobileRadioStation(
+            alias = RADIO_ALIAS,
+            urls = listOf("https://bundled.example/live"),
+            artworkUrl = "https://bundled.example/logo.png",
+        )
+        val saved = MobileRadioStation(
+            alias = RADIO_ALIAS,
+            urls = listOf("https://custom.example/live"),
+            artworkUrl = "https://custom.example/logo.png",
+        )
+
+        val merged = mergeRadioStations(listOf(saved), listOf(bundledStation)).single()
+
+        assertEquals("https://custom.example/logo.png", merged.artworkUrl)
     }
 
     @Test
@@ -47,7 +91,10 @@ class RadioStationDefaultsTest {
             bundled = bundled,
             hiddenBundledAliases = setOf("trojka"),
         )
-        assertEquals(custom, merged.first { it.alias == "trojka" })
+        assertEquals(
+            custom.copy(artworkUrl = trojkaArtwork),
+            merged.first { it.alias == "trojka" },
+        )
     }
 
     @Test
@@ -220,4 +267,9 @@ class RadioStationDefaultsTest {
         assertFalse(m3u.contains("tune-only"))
         assertTrue(pls.contains("NumberOfEntries=2"))
     }
+    companion object {
+        private const val RADIO_ALIAS = "radio"
+        private const val TROJKA_TUNEIN_ID = "s15984"
+    }
+
 }
