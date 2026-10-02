@@ -127,7 +127,9 @@ Still to check on hardware:
   BBC Radio 1, Trójka and Radio Paradise passed on 2026-09-30.
 - [ ] Safe-start volume regression: the 2026-09-30 pass stayed at raw volume 0 instead of
   returning to step 3. The radio-polish fix rejects the delayed startup `VolumeLevel=0` event
-  that was overwriting the safe target; re-check 0 -> 3 on the physical M5.
+  that was overwriting the safe target; re-check 0 -> 3 on the physical M5. Since 2026-10-02 a
+  station switch while one is already audible passes through the same 0 + mute but lifts back
+  to the listener's volume instead of 3; check that too. The Radio tab now has its own Stop.
 - [x] BBC HLS shows no track title (`Now playing: None`): expected. Checked 2026-10-01 against
   the BBC Radio 1 320k rendition: segments carry only PAT, PMT and one audio PID (no ID3
   timed-metadata PES), the playlist has no `EXT-X-DATERANGE`, and every `#EXTINF` title is
