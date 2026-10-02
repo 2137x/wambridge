@@ -60,6 +60,7 @@ class StreamReachabilityTests(TestCase):
     def test_never_sends_a_request_to_the_stream_server(self) -> None:
         """The relay serves one consumer; a probe that asked for the body would be a second."""
         received: list[bytes] = []
+        handled = threading.Event()
 
         class _Recorder(socketserver.BaseRequestHandler):
             def handle(self) -> None:
@@ -68,6 +69,8 @@ class StreamReachabilityTests(TestCase):
                     received.append(self.request.recv(1024))
                 except OSError:
                     received.append(b"")
+                finally:
+                    handled.set()
 
         server = socketserver.TCPServer(("127.0.0.1", 0), _Recorder)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -76,6 +79,9 @@ class StreamReachabilityTests(TestCase):
             assert_stream_reachable(
                 f"http://127.0.0.1:{server.server_address[1]}/stream.wav"
             )
+            # The probe closes at once; shutting the server down before serve_forever
+            # has accepted that connection would leave nothing recorded at all.
+            self.assertTrue(handled.wait(timeout=5), "the probe never reached the server")
         finally:
             server.shutdown()
             server.server_close()

@@ -666,7 +666,8 @@ operating system records.
     Czwórka (direct MP3), switched HLS -> Ogg and restarted after Stop. Merged with open
     hardware items tracked in `docs/ANDROID_VNEXT.md` section 8: Stop during transcoder
     startup, 60 s stability per transcoded station, the 0 -> 3 safe-start volume on every
-    station start, and missing BBC HLS titles.
+    station start. Missing BBC HLS titles are expected: the stream carries no timed metadata
+    (checked 2026-10-01).
 
     **Home/Radio navigation updated 2026-09-23:** Home consumes the shared speaker snapshot for
     Now Playing and direct controls, including the stateful DLNA toggle. Radio owns station
