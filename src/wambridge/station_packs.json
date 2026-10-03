@@ -4,7 +4,9 @@
       "alias": "bbc1",
       "url": "https://as-hls-ww-live.akamaized.net/pool_01505109/live/ww/bbc_radio_one/bbc_radio_one.isml/bbc_radio_one-audio=320000.norewind.m3u8",
       "fallback_urls": [
-        "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/nonuk/audio_syndication_low_sbr_v1/aks/bbc_radio_one.m3u8"
+        "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/nonuk/audio_syndication_low_sbr_v1/aks/bbc_radio_one.m3u8",
+        "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_one&bitrate=320000",
+        "http://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/nonuk/pc_hd_abr_v2/ak/bbc_radio_one.m3u8"
       ],
       "tunein_id": "s24939"
     },
@@ -12,7 +14,8 @@
       "alias": "trojka",
       "url": "http://41.dktr.pl:8000/trojka.ogg",
       "fallback_urls": [
-        "http://41.dktr.pl:8000/trojka2.ogg"
+        "http://41.dktr.pl:8000/trojka2.ogg",
+        "https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8"
       ],
       "tunein_id": "s15984"
     },
@@ -20,7 +23,8 @@
       "alias": "czworka",
       "url": "http://stream3.polskieradio.pl:8906/;stream",
       "fallback_urls": [
-        "http://mp3.polskieradio.pl:8956/;"
+        "http://mp3.polskieradio.pl:8956/;",
+        "https://stream14.polskieradio.pl/pr4/pr4.sdp/playlist.m3u8"
       ],
       "tunein_id": "s118200"
     },

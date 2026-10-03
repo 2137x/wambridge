@@ -12,7 +12,7 @@ class StationPackTests(TestCase):
             [station.alias for station in stations],
             ["bbc1", "trojka", "czworka"],
         )
-        self.assertTrue(all(len(station.all_urls) == 2 for station in stations))
+        self.assertEqual([len(station.all_urls) for station in stations], [4, 3, 3])
 
     def test_favorites_contains_top3_and_extended_stations(self) -> None:
         stations = get_station_pack("favorites")
@@ -70,6 +70,31 @@ class StationPackTests(TestCase):
             station.alias: station for station in get_station_pack("favorites")
         }
 
+        self.assertEqual(
+            stations["bbc1"].all_urls,
+            (
+                "https://as-hls-ww-live.akamaized.net/pool_01505109/live/ww/bbc_radio_one/bbc_radio_one.isml/bbc_radio_one-audio=320000.norewind.m3u8",
+                "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/nonuk/audio_syndication_low_sbr_v1/aks/bbc_radio_one.m3u8",
+                "http://lsn.lv/bbcradio.m3u8?station=bbc_radio_one&bitrate=320000",
+                "http://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/nonuk/pc_hd_abr_v2/ak/bbc_radio_one.m3u8",
+            ),
+        )
+        self.assertEqual(
+            stations["trojka"].all_urls,
+            (
+                "http://41.dktr.pl:8000/trojka.ogg",
+                "http://41.dktr.pl:8000/trojka2.ogg",
+                "https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8",
+            ),
+        )
+        self.assertEqual(
+            stations["czworka"].all_urls,
+            (
+                "http://stream3.polskieradio.pl:8906/;stream",
+                "http://mp3.polskieradio.pl:8956/;",
+                "https://stream14.polskieradio.pl/pr4/pr4.sdp/playlist.m3u8",
+            ),
+        )
         self.assertEqual(
             stations["electroswing"].all_urls,
             (
