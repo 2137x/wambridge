@@ -63,21 +63,28 @@ internal object ArtworkLoader {
         placeholderRes: Int? = null,
     ) {
         val key = url?.trim()?.takeIf(::isHttpUrl)
-        if (view.tag == key) return
+        if (key != null) {
+            synchronized(cache) { cache.get(key) }?.let { bitmap ->
+                view.tag = key
+                view.setImageBitmap(bitmap)
+                return
+            }
+        }
+        if (key != null && view.tag == key) return
 
         view.tag = key
         placeholderRes?.let(view::setImageResource)
         if (key == null) return
 
-        synchronized(cache) { cache.get(key) }?.let { bitmap ->
-            view.setImageBitmap(bitmap)
-            return
-        }
-
         val appContext = context.applicationContext
         executor.execute {
             val bitmap = runCatching { download(appContext, key) }.getOrNull()
-                ?: return@execute
+            if (bitmap == null) {
+                view.post {
+                    if (view.tag == key) view.tag = null
+                }
+                return@execute
+            }
             synchronized(cache) { cache.put(key, bitmap) }
             view.post {
                 if (view.tag == key) view.setImageBitmap(bitmap)
