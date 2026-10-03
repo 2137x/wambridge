@@ -42,7 +42,7 @@
       "fallback_urls": [
         "https://streamer.radio.co:80/s2c3cc784b/listen"
       ],
-      "artwork_url": "https://cdn-profiles.tunein.com/s162771/images/logod.png",
+      "artwork_url": "https://cdn-profiles.tunein.com/s162771/images/logod.jpg",
       "tunein_id": "s162771"
     },
     {
@@ -69,7 +69,7 @@
       "fallback_urls": [
         "https://r.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx"
       ],
-      "artwork_url": "https://cdn-profiles.tunein.com/s76098/images/logod.png"
+      "artwork_url": "https://cdn-profiles.tunein.com/s15990/images/logod.png"
     },
     {
       "alias": "rmfmaxxx",
