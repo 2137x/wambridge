@@ -20,6 +20,17 @@ internal fun artworkSampleSize(width: Int, height: Int, maxEdge: Int): Int {
     return sample
 }
 
+internal fun artworkUrlCandidates(value: String): List<String> {
+    val cleaned = value.trim()
+    if (cleaned.isEmpty()) return emptyList()
+    val candidates = linkedSetOf(cleaned)
+    val match = TUNEIN_LOGO_EXTENSION.matchEntire(cleaned) ?: return candidates.toList()
+    val extension = match.groupValues[2].lowercase()
+    val replacement = if (extension == "png") "jpg" else "png"
+    candidates += match.groupValues[1] + replacement + match.groupValues[3]
+    return candidates.toList()
+}
+
 /** Shared, Wi-Fi-bound artwork cache for TuneIn lists and Home Now Playing. */
 internal object ArtworkLoader {
     private val executor = Executors.newFixedThreadPool(3) { runnable ->
@@ -97,7 +108,19 @@ internal object ArtworkLoader {
             value.startsWith("https://", ignoreCase = true)
 
     private fun download(context: Context, address: String): Bitmap {
-        var lastError: Exception? = null
+        var lastError: IOException? = null
+        for (candidate in artworkUrlCandidates(address)) {
+            try {
+                return downloadCandidate(context, candidate)
+            } catch (error: IOException) {
+                lastError = error
+            }
+        }
+        throw lastError ?: IOException("No usable artwork URL")
+    }
+
+    private fun downloadCandidate(context: Context, address: String): Bitmap {
+        var lastError: IOException? = null
         for (connection in WifiLan.openHttpConnections(context, URL(address))) {
             connection.apply {
                 connectTimeout = TIMEOUT_MS
@@ -107,52 +130,8 @@ internal object ArtworkLoader {
                 requestMethod = "GET"
             }
             try {
-                if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                    throw IOException("Artwork HTTP ${connection.responseCode}")
-                }
-                val out = ByteArrayOutputStream()
-                val buffer = ByteArray(8 * 1024)
-                connection.inputStream.use { input ->
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        if (out.size() + count > MAX_BYTES) {
-                            throw IOException("Artwork too large")
-                        }
-                        out.write(buffer, 0, count)
-                    }
-                }
-                val bytes = out.toByteArray()
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-                    throw IOException("Unsupported artwork image")
-                }
-                val options = BitmapFactory.Options().apply {
-                    inSampleSize = artworkSampleSize(
-                        width = bounds.outWidth,
-                        height = bounds.outHeight,
-                        maxEdge = MAX_BITMAP_EDGE,
-                    )
-                }
-                val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-                    ?: throw IOException("Unsupported artwork image")
-                if (decoded.width <= MAX_BITMAP_EDGE && decoded.height <= MAX_BITMAP_EDGE) {
-                    return decoded
-                }
-                val scale = minOf(
-                    MAX_BITMAP_EDGE.toFloat() / decoded.width,
-                    MAX_BITMAP_EDGE.toFloat() / decoded.height,
-                )
-                val scaled = Bitmap.createScaledBitmap(
-                    decoded,
-                    (decoded.width * scale).toInt().coerceAtLeast(1),
-                    (decoded.height * scale).toInt().coerceAtLeast(1),
-                    true,
-                )
-                if (scaled !== decoded) decoded.recycle()
-                return scaled
-            } catch (error: Exception) {
+                return decodeArtwork(connection)
+            } catch (error: IOException) {
                 lastError = error
             } finally {
                 connection.disconnect()
@@ -161,8 +140,59 @@ internal object ArtworkLoader {
         throw lastError ?: IOException("No active Wi-Fi network")
     }
 
+    private fun decodeArtwork(connection: HttpURLConnection): Bitmap {
+        if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+            throw IOException("Artwork HTTP ${connection.responseCode}")
+        }
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(8 * 1024)
+        connection.inputStream.use { input ->
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                if (out.size() + count > MAX_BYTES) {
+                    throw IOException("Artwork too large")
+                }
+                out.write(buffer, 0, count)
+            }
+        }
+        val bytes = out.toByteArray()
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            throw IOException("Unsupported artwork image")
+        }
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = artworkSampleSize(
+                width = bounds.outWidth,
+                height = bounds.outHeight,
+                maxEdge = MAX_BITMAP_EDGE,
+            )
+        }
+        val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+            ?: throw IOException("Unsupported artwork image")
+        if (decoded.width <= MAX_BITMAP_EDGE && decoded.height <= MAX_BITMAP_EDGE) {
+            return decoded
+        }
+        val scale = minOf(
+            MAX_BITMAP_EDGE.toFloat() / decoded.width,
+            MAX_BITMAP_EDGE.toFloat() / decoded.height,
+        )
+        val scaled = Bitmap.createScaledBitmap(
+            decoded,
+            (decoded.width * scale).toInt().coerceAtLeast(1),
+            (decoded.height * scale).toInt().coerceAtLeast(1),
+            true,
+        )
+        if (scaled !== decoded) decoded.recycle()
+        return scaled
+    }
+
     private const val CACHE_KIB = 4 * 1024
     private const val MAX_BITMAP_EDGE = 512
     private const val TIMEOUT_MS = 5_000
     private const val MAX_BYTES = 1024 * 1024
 }
+
+private val TUNEIN_LOGO_EXTENSION =
+    Regex("(?i)^(https://cdn-profiles\\.tunein\\.com/.*/images/logo[dt]\\.)(png|jpg)(\\?.*)?$")

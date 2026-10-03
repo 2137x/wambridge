@@ -163,6 +163,28 @@ class RadioStationDefaultsTest {
     }
 
     @Test
+    fun tuneInArtworkFallsBackBetweenPngAndJpegVariants() {
+        assertEquals(
+            listOf(
+                ELECTRO_SWING_PNG,
+                "https://cdn-profiles.tunein.com/s162771/images/logod.jpg",
+            ),
+            artworkUrlCandidates(ELECTRO_SWING_PNG),
+        )
+        assertEquals(
+            listOf(
+                KASZEBE_JPG_QUERY,
+                "https://cdn-profiles.tunein.com/s77862/images/logod.png?t=1",
+            ),
+            artworkUrlCandidates(KASZEBE_JPG_QUERY),
+        )
+        assertEquals(
+            listOf("https://radio.example/logo.png"),
+            artworkUrlCandidates("https://radio.example/logo.png"),
+        )
+    }
+
+    @Test
     fun artworkSamplingBoundsLargeDecodedImages() {
         assertEquals(1, artworkSampleSize(512, 512, 512))
         assertEquals(2, artworkSampleSize(2048, 1024, 512))
@@ -270,6 +292,9 @@ class RadioStationDefaultsTest {
     companion object {
         private const val RADIO_ALIAS = "radio"
         private const val TROJKA_TUNEIN_ID = "s15984"
+        private const val ELECTRO_SWING_PNG =
+            "https://cdn-profiles.tunein.com/s162771/images/logod.png"
+        private const val KASZEBE_JPG_QUERY =
+            "https://cdn-profiles.tunein.com/s77862/images/logod.jpg?t=1"
     }
-
 }
