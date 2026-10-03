@@ -1,8 +1,8 @@
 package io.github.trvny.wambridge.mobile
 
-import java.net.InetAddress
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.net.InetAddress
 
 /**
  * Who the renderer's HTTP port answers.

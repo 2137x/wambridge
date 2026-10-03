@@ -52,12 +52,19 @@ internal interface RendererCallbacks {
 
 internal class RendererState(val udn: String) {
     @Volatile var currentUri = ""
+
     @Volatile var currentMetadata = ""
+
     @Volatile var nextUri = ""
+
     @Volatile var nextMetadata = ""
+
     @Volatile var transportState = "STOPPED"
+
     @Volatile var volumePercent = 20
+
     @Volatile var muted = false
+
     @Volatile var lastError = ""
 }
 
@@ -595,16 +602,24 @@ internal class UpnpRenderer(
         val byteRate = rate * channels * bytesPerSample
         val blockAlign = channels * bytesPerSample
         return ByteArrayOutputStream(44).apply {
-            write("RIFF".toByteArray(StandardCharsets.US_ASCII)); le32(0xffffffffL)
-            write("WAVEfmt ".toByteArray(StandardCharsets.US_ASCII)); le32(16)
-            le16(1); le16(channels); le32(rate.toLong()); le32(byteRate.toLong())
-            le16(blockAlign); le16(bits)
-            write("data".toByteArray(StandardCharsets.US_ASCII)); le32(0xffffffffL)
+            write("RIFF".toByteArray(StandardCharsets.US_ASCII))
+            le32(0xffffffffL)
+            write("WAVEfmt ".toByteArray(StandardCharsets.US_ASCII))
+            le32(16)
+            le16(1)
+            le16(channels)
+            le32(rate.toLong())
+            le32(byteRate.toLong())
+            le16(blockAlign)
+            le16(bits)
+            write("data".toByteArray(StandardCharsets.US_ASCII))
+            le32(0xffffffffL)
         }.toByteArray()
     }
 
     private fun ByteArrayOutputStream.le16(value: Int) {
-        write(value and 0xff); write((value ushr 8) and 0xff)
+        write(value and 0xff)
+        write((value ushr 8) and 0xff)
     }
 
     private fun ByteArrayOutputStream.le32(value: Long) {
@@ -616,9 +631,12 @@ internal class UpnpRenderer(
 
     private fun isLocalPlayerUri(value: String): Boolean = try {
         val uri = URI(value)
-        if (!uri.scheme.equals("http", ignoreCase = true) || uri.host.isNullOrBlank()) false
-        else InetAddress.getAllByName(uri.host).all { address ->
-            address.isLoopbackAddress || address.hostAddress == localAddress.hostAddress
+        if (!uri.scheme.equals("http", ignoreCase = true) || uri.host.isNullOrBlank()) {
+            false
+        } else {
+            InetAddress.getAllByName(uri.host).all { address ->
+                address.isLoopbackAddress || address.hostAddress == localAddress.hostAddress
+            }
         }
     } catch (_: Exception) {
         false
