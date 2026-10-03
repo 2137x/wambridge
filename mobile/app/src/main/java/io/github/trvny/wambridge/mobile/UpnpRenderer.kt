@@ -37,6 +37,9 @@ internal fun streamRelayStalled(
     timeoutMs: Long,
 ): Boolean = timeoutMs > 0L && nowMs - lastProgressMs >= timeoutMs
 
+internal fun rendererMulticastNeeded(running: Boolean, streamActive: Boolean): Boolean =
+    running && !streamActive
+
 internal interface RendererCallbacks {
     fun onPlay(rendererStreamUrl: String)
     fun onStreamOpened()
@@ -204,6 +207,22 @@ internal class UpnpRenderer(
         for (target in advertisedTargets()) {
             val bytes = SsdpLifecycle.alive(SSDP_HOST, location, SERVER_HEADER, state.udn, target)
             socket.send(DatagramPacket(bytes, bytes.size, SSDP_ADDRESS, SSDP_PORT))
+        }
+    }
+
+    private fun suspendDiscoveryForStream() {
+        multicastLock?.let { lock ->
+            if (lock.isHeld) lock.release()
+        }
+    }
+
+    private fun resumeDiscoveryAfterStream() {
+        if (!rendererMulticastNeeded(running.get(), activeStream.get() != null)) return
+        val lock = multicastLock ?: return
+        val socket = ssdpSocket ?: return
+        if (!runCatching { if (!lock.isHeld) lock.acquire() }.isSuccess) return
+        repeat(2) {
+            runCatching { sendAlive(socket) }
         }
     }
 
@@ -432,6 +451,10 @@ internal class UpnpRenderer(
         var watchdog: ScheduledFuture<*>? = null
         try {
             callbacks.onStreamOpened()
+            // The controller has already found us and the M5 is pulling audio.
+            // Stop forcing Wi-Fi multicast delivery while the stream is active;
+            // reacquire it after playback so SSDP discovery works again.
+            suspendDiscoveryForStream()
             val lastProgressMs = AtomicLong(SystemClock.elapsedRealtime())
             watchdog = streamWatchdog.scheduleWithFixedDelay(
                 {
@@ -505,6 +528,7 @@ internal class UpnpRenderer(
         } finally {
             watchdog?.cancel(false)
             if (activeStream.compareAndSet(client, null)) {
+                resumeDiscoveryAfterStream()
                 if (state.nextUri.isNotBlank()) {
                     state.currentUri = state.nextUri
                     state.currentMetadata = state.nextMetadata

@@ -40,6 +40,13 @@ class RendererRoutingTest {
     }
 
     @Test
+    fun `multicast discovery sleeps only while an audio stream is active`() {
+        assertEquals(true, rendererMulticastNeeded(running = true, streamActive = false))
+        assertEquals(false, rendererMulticastNeeded(running = true, streamActive = true))
+        assertEquals(false, rendererMulticastNeeded(running = false, streamActive = false))
+    }
+
+    @Test
     fun `the speaker gets the audio stream`() {
         assertEquals(
             RendererRoute.Allowed(RendererEndpoint.STREAM),
