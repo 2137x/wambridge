@@ -35,6 +35,19 @@ class AndroidUxContractTest {
     }
 
     @Test
+    fun artworkLoaderReusesSharedCacheBeforeSameUrlShortCircuit() {
+        val loader = File(
+            "src/main/java/io/github/trvny/wambridge/mobile/ArtworkLoader.kt",
+        ).readText()
+
+        val cacheHit = loader.indexOf("synchronized(cache) { cache.get(key) }?.let")
+        val sameUrlGuard = loader.indexOf("if (key != null && view.tag == key) return")
+        assertTrue(cacheHit >= 0)
+        assertTrue(sameUrlGuard > cacheHit)
+        assertTrue(loader.contains("if (view.tag == key) view.tag = null"))
+    }
+
+    @Test
     fun widgetAndTileStartOnlyTheRendererAndDoNotOwnDiscovery() {
         val widget = File(
             "src/main/java/io/github/trvny/wambridge/mobile/WamBridgeWidget.kt",
