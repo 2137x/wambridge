@@ -37,6 +37,9 @@ internal fun streamRelayStalled(
     timeoutMs: Long,
 ): Boolean = timeoutMs > 0L && nowMs - lastProgressMs >= timeoutMs
 
+internal fun rendererMulticastNeeded(running: Boolean, streamActive: Boolean): Boolean =
+    running && !streamActive
+
 internal interface RendererCallbacks {
     fun onPlay(rendererStreamUrl: String)
     fun onStreamOpened()
@@ -49,12 +52,19 @@ internal interface RendererCallbacks {
 
 internal class RendererState(val udn: String) {
     @Volatile var currentUri = ""
+
     @Volatile var currentMetadata = ""
+
     @Volatile var nextUri = ""
+
     @Volatile var nextMetadata = ""
+
     @Volatile var transportState = "STOPPED"
+
     @Volatile var volumePercent = 20
+
     @Volatile var muted = false
+
     @Volatile var lastError = ""
 }
 
@@ -204,6 +214,22 @@ internal class UpnpRenderer(
         for (target in advertisedTargets()) {
             val bytes = SsdpLifecycle.alive(SSDP_HOST, location, SERVER_HEADER, state.udn, target)
             socket.send(DatagramPacket(bytes, bytes.size, SSDP_ADDRESS, SSDP_PORT))
+        }
+    }
+
+    private fun suspendDiscoveryForStream() {
+        multicastLock?.let { lock ->
+            if (lock.isHeld) lock.release()
+        }
+    }
+
+    private fun resumeDiscoveryAfterStream() {
+        if (!rendererMulticastNeeded(running.get(), activeStream.get() != null)) return
+        val lock = multicastLock ?: return
+        val socket = ssdpSocket ?: return
+        if (!runCatching { if (!lock.isHeld) lock.acquire() }.isSuccess) return
+        repeat(2) {
+            runCatching { sendAlive(socket) }
         }
     }
 
@@ -432,6 +458,10 @@ internal class UpnpRenderer(
         var watchdog: ScheduledFuture<*>? = null
         try {
             callbacks.onStreamOpened()
+            // The controller has already found us and the M5 is pulling audio.
+            // Stop forcing Wi-Fi multicast delivery while the stream is active;
+            // reacquire it after playback so SSDP discovery works again.
+            suspendDiscoveryForStream()
             val lastProgressMs = AtomicLong(SystemClock.elapsedRealtime())
             watchdog = streamWatchdog.scheduleWithFixedDelay(
                 {
@@ -505,6 +535,7 @@ internal class UpnpRenderer(
         } finally {
             watchdog?.cancel(false)
             if (activeStream.compareAndSet(client, null)) {
+                resumeDiscoveryAfterStream()
                 if (state.nextUri.isNotBlank()) {
                     state.currentUri = state.nextUri
                     state.currentMetadata = state.nextMetadata
@@ -571,16 +602,24 @@ internal class UpnpRenderer(
         val byteRate = rate * channels * bytesPerSample
         val blockAlign = channels * bytesPerSample
         return ByteArrayOutputStream(44).apply {
-            write("RIFF".toByteArray(StandardCharsets.US_ASCII)); le32(0xffffffffL)
-            write("WAVEfmt ".toByteArray(StandardCharsets.US_ASCII)); le32(16)
-            le16(1); le16(channels); le32(rate.toLong()); le32(byteRate.toLong())
-            le16(blockAlign); le16(bits)
-            write("data".toByteArray(StandardCharsets.US_ASCII)); le32(0xffffffffL)
+            write("RIFF".toByteArray(StandardCharsets.US_ASCII))
+            le32(0xffffffffL)
+            write("WAVEfmt ".toByteArray(StandardCharsets.US_ASCII))
+            le32(16)
+            le16(1)
+            le16(channels)
+            le32(rate.toLong())
+            le32(byteRate.toLong())
+            le16(blockAlign)
+            le16(bits)
+            write("data".toByteArray(StandardCharsets.US_ASCII))
+            le32(0xffffffffL)
         }.toByteArray()
     }
 
     private fun ByteArrayOutputStream.le16(value: Int) {
-        write(value and 0xff); write((value ushr 8) and 0xff)
+        write(value and 0xff)
+        write((value ushr 8) and 0xff)
     }
 
     private fun ByteArrayOutputStream.le32(value: Long) {
@@ -592,9 +631,12 @@ internal class UpnpRenderer(
 
     private fun isLocalPlayerUri(value: String): Boolean = try {
         val uri = URI(value)
-        if (!uri.scheme.equals("http", ignoreCase = true) || uri.host.isNullOrBlank()) false
-        else InetAddress.getAllByName(uri.host).all { address ->
-            address.isLoopbackAddress || address.hostAddress == localAddress.hostAddress
+        if (!uri.scheme.equals("http", ignoreCase = true) || uri.host.isNullOrBlank()) {
+            false
+        } else {
+            InetAddress.getAllByName(uri.host).all { address ->
+                address.isLoopbackAddress || address.hostAddress == localAddress.hostAddress
+            }
         }
     } catch (_: Exception) {
         false

@@ -1,8 +1,8 @@
 package io.github.trvny.wambridge.mobile
 
-import java.net.InetAddress
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.net.InetAddress
 
 /**
  * Who the renderer's HTTP port answers.
@@ -37,6 +37,13 @@ class RendererRoutingTest {
         assertEquals(false, streamRelayStalled(1_000L, 30_999L, 30_000L))
         assertEquals(true, streamRelayStalled(1_000L, 31_000L, 30_000L))
         assertEquals(false, streamRelayStalled(1_000L, 60_000L, 0L))
+    }
+
+    @Test
+    fun `multicast discovery sleeps only while an audio stream is active`() {
+        assertEquals(true, rendererMulticastNeeded(running = true, streamActive = false))
+        assertEquals(false, rendererMulticastNeeded(running = true, streamActive = true))
+        assertEquals(false, rendererMulticastNeeded(running = false, streamActive = false))
     }
 
     @Test
