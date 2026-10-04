@@ -1,6 +1,6 @@
 # GitHub Copilot
 
-Use the nearest applicable `AGENTS.md` for workflow/review rules. For playback, protocol, and hardware facts, use `docs/WAM_PROTOCOL.md` and `docs/DEVELOPMENT_STATUS.md`; newest measurements override older assumptions. Apply matching `.github/instructions/*.instructions.md` files.
+For playback, protocol, and hardware facts, use `docs/WAM_PROTOCOL.md` and `docs/DEVELOPMENT_STATUS.md`; newest measurements override older assumptions.
 
 For code review:
 
