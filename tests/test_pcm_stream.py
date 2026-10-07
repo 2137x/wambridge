@@ -263,7 +263,8 @@ class StartupPayloadProgressTests(TestCase):
 
 
 class StartupSilenceTests(TestCase):
-    def _command(self, **kwargs: object) -> list[str]:
+    @staticmethod
+    def _command(**kwargs: object) -> list[str]:
         with patch("wambridge.stream.shutil.which", return_value="ffmpeg"):
             server = PcmAudioStreamServer(
                 BytesIO(b""),

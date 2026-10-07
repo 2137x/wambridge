@@ -256,7 +256,8 @@ class ControlChannelTests(unittest.TestCase):
         self.assertTrue(finished.wait(timeout=2))
         self.assertTrue(closed.wait(timeout=2))
 
-    def test_close_is_safe_without_a_client(self) -> None:
+    @staticmethod
+    def test_close_is_safe_without_a_client() -> None:
         channel = ControlChannel(lambda _level: None)
         channel.start()
         channel.close()
