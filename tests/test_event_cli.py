@@ -68,7 +68,8 @@ class ParserTests(unittest.TestCase):
 
 
 class SelectSpeakerTests(unittest.TestCase):
-    def _args(self, **overrides: object) -> argparse.Namespace:
+    @staticmethod
+    def _args(**overrides: object) -> argparse.Namespace:
         defaults: dict[str, object] = {
             "speaker": None,
             "device": None,
@@ -151,7 +152,8 @@ class FormatEventTests(unittest.TestCase):
 
 
 class RunTests(unittest.TestCase):
-    def _args(self, **overrides: object) -> argparse.Namespace:
+    @staticmethod
+    def _args(**overrides: object) -> argparse.Namespace:
         defaults: dict[str, object] = {
             "speaker": "10.0.0.118",
             "device": None,

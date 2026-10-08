@@ -27,8 +27,8 @@ def tearDownModule() -> None:
 
 
 class PlaybackWatcherErrorTests(TestCase):
+    @staticmethod
     def _run_event(
-        self,
         watcher: PlaybackWatcher,
         *,
         code: str,
@@ -130,7 +130,8 @@ class PlaybackWatcherErrorTests(TestCase):
             "\n".join(logs.output),
         )
 
-    def test_start_event_keeps_shared_connection_available(self) -> None:
+    @staticmethod
+    def test_start_event_keeps_shared_connection_available() -> None:
         watcher = PlaybackWatcher("10.0.0.118", CLIENT_UUID, port=55001)
         watcher.arm()
         event = WamEvent(

@@ -91,7 +91,8 @@ class SpeakerStateTests(unittest.TestCase):
 
 
 class PlaybackWatcherTests(unittest.TestCase):
-    def _watch(self, events, error=None):
+    @staticmethod
+    def _watch(events, error=None):
         def fake_listen(_ip, _uuid, *, port, stop, ready):  # noqa: ARG001
             ready.set()
             if error is not None:
@@ -174,7 +175,8 @@ class StartSharePlaybackTests(unittest.TestCase):
         watcher_patcher.start()
         self.addCleanup(watcher_patcher.stop)
 
-    def _start(self, **kwargs):
+    @staticmethod
+    def _start(**kwargs):
         return start_share_playback(
             "10.0.0.118", Path("track.mp3"), timeout=0.01, **kwargs
         )

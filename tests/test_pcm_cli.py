@@ -41,7 +41,8 @@ class FakePcmServer:
         self.audio_started.set()
         self.request_finished.set()
 
-    def url(self, host: str) -> str:
+    @staticmethod
+    def url(host: str) -> str:
         return f"http://{host}:1234/stream/test.flac"
 
     def release_audio(self) -> None:
@@ -217,7 +218,8 @@ class PcmCliTests(TestCase):
         leases_patcher.start()
         self.addCleanup(leases_patcher.stop)
 
-    def _args(self, *extra: str):
+    @staticmethod
+    def _args(*extra: str):
         return build_parser().parse_args(
             [
                 "--device",
@@ -675,8 +677,8 @@ class PcmCliTests(TestCase):
             os.getpid(),
         )
 
+    @staticmethod
     def _connected_watcher(
-        self,
         *,
         sleep_after_stop: int = 0,
         menu_sleep_timer_active: bool = False,

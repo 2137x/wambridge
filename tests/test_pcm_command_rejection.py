@@ -49,20 +49,23 @@ def _response(method: str, result: str, **values: str) -> WamEvent:
 
 
 class CommandRejectionTests(TestCase):
-    def _watch(self, watcher: PlaybackWatcher, events: list[WamEvent]) -> None:
+    @staticmethod
+    def _watch(watcher: PlaybackWatcher, events: list[WamEvent]) -> None:
         """Run the listener body over a fixed set of speaker responses."""
         with patch("wambridge.pcm_cli.WamEventConnection") as connection_class:
             connection = connection_class.return_value.__enter__.return_value
             connection.events.return_value = events
             watcher._run()
 
-    def _armed_watcher(self) -> PlaybackWatcher:
+    @staticmethod
+    def _armed_watcher() -> PlaybackWatcher:
         watcher = PlaybackWatcher("10.0.0.118", CLIENT_UUID, port=55001)
         watcher.arm()
         watcher._connection = object()  # accept commands without a socket
         return watcher
 
-    def _send(self, watcher: PlaybackWatcher, method: str) -> None:
+    @staticmethod
+    def _send(watcher: PlaybackWatcher, method: str) -> None:
         with patch.object(watcher, "_connection") as connection:
             connection.send.return_value = None
             watcher._send_command(method=method)
