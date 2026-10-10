@@ -12,10 +12,8 @@ CLIENT_UUID = "00000000-0000-4000-8000-000000000001"
 class SilentControlConnection:
     def __init__(self) -> None:
         self.sent: list[dict[str, object]] = []
-
     def send(self, **kwargs) -> None:
         self.sent.append(kwargs)
-
 
 
 
@@ -37,7 +35,8 @@ class ImmediateRejectingControlConnection:
 
 
 class RejectedVolumeCacheTests(TestCase):
-    def _watcher(self, volume: int = 3) -> PlaybackWatcher:
+    @staticmethod
+    def _watcher(volume: int = 3) -> PlaybackWatcher:
         watcher = PlaybackWatcher("10.0.0.118", CLIENT_UUID, port=55001)
         watcher._connection = SilentControlConnection()
         watcher._current_volume = volume

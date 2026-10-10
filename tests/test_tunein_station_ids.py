@@ -90,7 +90,8 @@ NEWLINE = chr(10)
 class PlaylistExpansionTests(TestCase):
     """TuneIn hands back a .pls for some stations and FFmpeg will not open one."""
 
-    def _resolve(self, answers: list[str]) -> tuple[str, ...]:
+    @staticmethod
+    def _resolve(answers: list[str]) -> tuple[str, ...]:
         from wambridge import tunein
 
         class FakeResponse:
@@ -137,7 +138,8 @@ class PlaylistExpansionTests(TestCase):
         calls = {"n": 0}
 
         class FirstAnswer:
-            def read(self, _size: int = 0) -> bytes:
+            @staticmethod
+            def read(_size: int = 0) -> bytes:
                 return b"http://example.test/listen.pls"
 
             def __enter__(self):

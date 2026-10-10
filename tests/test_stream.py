@@ -19,7 +19,8 @@ class ReadOnePipe:
         self.requested_size = size
         return b"fLaC"
 
-    def read(self, _size: int) -> bytes:
+    @staticmethod
+    def read(_size: int) -> bytes:
         raise AssertionError("read() should not be used when read1() is available")
 
 
